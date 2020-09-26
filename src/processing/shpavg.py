@@ -199,7 +199,7 @@ if __name__ == '__main__':
   else:
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 8; ldebug = False # for quick computations
-#     modes = ('time-series','climatology')
+    modes = ('time-series','climatology')
     modes = ('climatology',)
 #     modes = ('time-series',) 
     loverwrite = True
@@ -225,12 +225,11 @@ if __name__ == '__main__':
 #     datasets += ['SnoDAS',]; periods = [(2011,2019),]; lLTM = False
 #     varlist =  ['liqprec','solprec','snow','snowh','Tsnow','snwmlt','evap_snow','evap_blow','dswe'] # SnoDAS binary + delta SWE
 #     varlist =  ['snow','dswe']; resolutions['SnoDAS'] = ['rfbc'] # SnoDAS RFBC (only SWE and delta SWE)
-#     datasets += ['NRCan']; periods = [(1980,2010),(1970,2000),]; lLTM = False
 #     datasets += ['CRU',]; lLTM = True
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
-#     datasets += ['Unity']; periods = [15,30] 
+    datasets += ['Unity']; periods = [15,30] 
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -299,7 +298,7 @@ if __name__ == '__main__':
     shape_name = 'abshp' # Alberta shapes
 #     shapes['provinces'] = ['AB'] # Canadian provinces from EC module
     grid = 'arb2'
-    shapes['basins'] = ['ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
+    shapes['basins'] = ['ARB_HTH','ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
 #     shape_name = 'glbshp' # only Canadian river basins
 #     shapes['provinces'] = ['MB','ON','QC'] # Canadian provinces from EC module
 #     shapes['basins'] = ['LandGLB','GLB','SON','GRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW','SNW','PRW'] # river basins (in Canada) from WSC module

@@ -898,11 +898,11 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     if ldaily:
         for tatt in atts: tatt.pop('time') # the default formatting is monthly; will be fixes below 
     try:
-      print(folder,filename)
       dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
                               varatts=atts, multifile=False, ncformat='NETCDF4', ignore_list=ignore_lists, 
                               mode=ncmode, squeeze=True, check_override=check_override, check_vars=check_vars)
     except EmptyDatasetError:
+      print(folder,filename)
       if lenc == 0: raise # allow loading of cosntants without other variables
     if ltrimT and lts and dataset.hasAxis('time') and len(dataset.time) > 180:
       if lwrite: raise ArgumentError("Cannot trim time-axis when NetCDF write mode is enabled!")
