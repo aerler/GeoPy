@@ -34,7 +34,9 @@ geotransform_CA12 = (-141.0, 1./12., 0.0, 41.0, 0.0, 1./12.); size_CA12 = (1068,
 NRCan_CA12_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_CA12, size=size_CA12)
 geotransform_CA24 = (-141.0, 1./24., 0.0, 41.0, 0.0, 1./24.); size_CA24 = (2136, 1008) # (x,y) map size of NRCan grid
 NRCan_CA24_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_CA24, size=size_CA24)
-NRCan_grids = ['NA12','NA60','CA12','CA24']
+geotransform_SON60 = (-85.0, 1./60., 0.0, 41.0, 0.0, 1./60.); size_SON60 = (660, 360) # (x,y) map size of NRCan grid
+NRCan_SON60_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_SON60, size=size_SON60)
+NRCan_grids = ['NA12','NA60','CA12','CA24','SON60']
 # default grid (NA12)
 NRCan_grid = NRCan_NA12_grid; geotransform = geotransform_NA12; size = size_NA12
 
@@ -511,6 +513,21 @@ day12_grid_pattern = root_folder+'{GRID:s}_Daily/'
 day12_var_pattern = '{VAR:s}/{year:04d}/{VAR:s}{year:04d}_{day:d}.asc.gz'
 day12_title = 'NRCan Daily Gridded Time-series'
 
+# daily transient at 1/60 degree resolution
+son60_period = (1997,2018) # SnoDAS period for southern Ontario
+son60_defaults = dict(axes=('year','day',None,None), dtype=np.float32, fillValue=None)
+son60_vardefs = dict(maxt = dict(grid='SON60', name='Tmax', units='K', offset=273.15, alt_name='max', **day12_defaults), # 2m maximum temperature, originally in degrees Celsius
+                     mint = dict(grid='SON60', name='Tmin', units='K', offset=273.15, alt_name='min', **day12_defaults), # 2m minimum temperature
+                     pcp  = dict(grid='SON60', name='precip', units='kg/m^2/s', scalefactor=1./86400., **day12_defaults), # unadjusted total precipitation
+                     pcp_adj  = dict(grid='SON60', name='precip_adj', units='kg/m^2/s', scalefactor=1./86400., 
+                                     alt_name='pcp', **day12_defaults),) # adjusted total precipitation
+# define original split and merged time axes
+son60_axdefs = day12_axdefs; son60_matts = day12_matts 
+# N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
+son60_derived = ('T2',) # no snow or rain yet
+son60_grid_pattern = day12_grid_pattern; son60_var_pattern = day12_var_pattern 
+son60_title = 'NRCan Daily Gridded Time-series for Southern Ontario'
+
 
 def loadASCII_Daily(name=dataset_name, title=day12_title, atts=None, derived_vars=day12_derived, varatts=varatts, snow_density='maritime',
                    NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=day12_period, merged_axis=day12_matts,
@@ -634,7 +651,7 @@ orig_file_pattern = norm12_grid_pattern+norm12_var_pattern # filename pattern: v
 ts_file_pattern = tsfile # filename pattern: grid
 clim_file_pattern = avgfile # filename pattern: variable name and resolution
 data_folder = avgfolder # folder for user data
-grid_def = {'NA12':NRCan_NA12_grid, 'NA60':NRCan_NA60_grid, 'CA12':NRCan_CA12_grid, 'CA24':NRCan_CA24_grid} # standardized grid dictionary
+grid_def = {'NA12':NRCan_NA12_grid, 'NA60':NRCan_NA60_grid, 'CA12':NRCan_CA12_grid, 'CA24':NRCan_CA24_grid, 'SON60':NRCan_SON60_grid} # standardized grid dictionary
 LTM_grids = ['NA12','CA12','CA24'] # grids that have long-term mean data 
 LTM_grids += ['na12_tundra','na12_taiga','na12_maritime','na12_ephemeral','na12_prairies','na12_alpine',] # some fake grids to accommodate different snow densities
 TS_grids = ['NA12','NA60','CA12'] # grids that have time-series data
@@ -655,7 +672,7 @@ loadShapeTimeSeries  = loadNRCan_ShpTS # time-series without associated grid (e.
 
 if __name__ == '__main__':
   
-    mode = 'test_daily'
+#     mode = 'test_daily'
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
@@ -663,7 +680,7 @@ if __name__ == '__main__':
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
 #     mode = 'convert_Daily'
-#     mode = 'convert_to_netcdf';
+    mode = 'convert_to_netcdf';
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
@@ -691,13 +708,16 @@ if __name__ == '__main__':
         # parameters for daily ascii
 #         varlist = ['pcp',]
 #         varlist = day12_vardefs.keys()
-        varlist = ['pcp', 'maxt', 'mint'] # order of importance...
-        grid_res = 'CA12'
+#         varlist = ['pcp', 'maxt', 'mint'] # order of importance...
+        varlist = ['pcp', 'maxt', 'mint', 'pcp_adj'] # order of importance...
+        vardefs = son60_vardefs
+        grid_res = 'SON60'
         griddef = grid_def[grid_res]
         # parameters for rasters
 #         start_date = '2011-01-01'; end_date = '2011-02-01'; sampling = 'D'; loverwrite = True
-        start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
+#         start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
 #         start_date = '2000-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
+        start_date = '1997-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
         raster_folder = root_folder + grid_res+'_Daily/'
         def raster_path_func(datetime, varname, **varatts):
             ''' determine path to appropriate raster for given datetime and variable'''
@@ -718,11 +738,11 @@ if __name__ == '__main__':
         ## loop over variables (individual files)
         for varname in varlist:
             
-            print("\n   ***   Reading rasters for variable '{}' ('{}')   ***   \n".format(varname,day12_vardefs[varname]['name']))
+            print("\n   ***   Reading rasters for variable '{}' ('{}')   ***   \n".format(varname,vardefs[varname]['name']))
             
-            nc_name = day12_vardefs[varname]['name']
+            nc_name = vardefs[varname]['name']
             nc_filepath = daily_folder + netcdf_filename.format(VAR=nc_name, RES=grid_res).lower()
-            vardef = {varname:day12_vardefs[varname]} # only one variable
+            vardef = {varname:vardefs[varname]} # only one variable
             # read rasters and write to NetCDF file
             convertRasterToNetCDF(filepath=nc_filepath, raster_folder=raster_folder, raster_path_func=raster_path_func, vardefs=vardef, 
                                   start_date=start_date, end_date=end_date, sampling=sampling, ds_atts=ds_atts, griddef=griddef,
@@ -753,11 +773,6 @@ if __name__ == '__main__':
         snow_density = 'maritime'
 #         snow_density = 'prairies'
         if not os.path.exists(daily_folder): os.mkdir(daily_folder)
-        # use actual, real values
-        # NA12 grid
-        title = day12_title; resolution = 12; grid_pattern  = day12_grid_pattern 
-        vardefs = day12_vardefs; var_pattern = day12_var_pattern; derived_vars = day12_derived
-        period = day12_period; split_axdefs = day12_axdefs; merged_atts = day12_matts         
         # test values
         varname = 'pcp'; period = (2014,2015); snow_density = None
         split_axdefs = dict(year= dict(name='year', units='year', coord=np.arange(2014,2015)),
