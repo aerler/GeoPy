@@ -308,10 +308,9 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, bias_co
     if folder is None: folder = daily_folder
     if lgeospatial:
         from geospatial.xarray_tools import loadXArray
-        if varlist is None and varname is None: 
-            varlist = bc_varlists.get(bias_correction, netcdf_varlist) # only variables available with that bias correction
+        default_varlist = bc_varlists.get(bias_correction, netcdf_varlist) # only variables available with that bias correction
         xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=bias_correction, resolution=None,
-                         filename_pattern=netcdf_filename, default_varlist=netcdf_varlist, resampling=resampling, lgeoref=lgeoref, 
+                         filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
                          geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
     else:
         warn('DEPRECATION WARNING: this is only for backwards compatibility and should not be used; use lgeospatial=True instead.')

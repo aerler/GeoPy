@@ -28,6 +28,7 @@ from geodata.gdal import addGDALtoDataset
 # for georeferencing
 from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
 from geospatial.xarray_tools import addGeoReference, loadXArray, updateVariableAttrs, computeNormals
+from geodata.misc import DatasetError
 
 ## Meta-vardata
 
@@ -71,9 +72,12 @@ dataset_attributes = dict(SnoDAS  = DSNT(name='SnoDAS',interval='1D', start_date
                           )
 dataset_list = list(dataset_attributes.keys())
 # N.B.: the effective start date for CaPA and all the rest is '2017-09-11T12'
-default_dataset_index = dict(precip='NRCan', T2='NRCan', Tmin='NRCan', Tmax='NRCan', 
+default_dataset_index = dict(precip='NRCan', precip_adj='NRCan', Tmin='NRCan', Tmax='NRCan', T2='NRCan', 
+                             pet_hog='NRCan', pet_har='NRCan', pet_haa='NRCan', pet_th='NRCan',
                              snow='SnoDAS', dswe='SnoDAS',
                              lat2D='const', lon2D='const', zs='const')
+dataset_varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
+default_varlist = [varname for varname in varlist if varname not in default_dataset_index]
 
 
 ## helper functions
@@ -131,29 +135,39 @@ def addConstantFields(xds, const_list=None, grid=None):
     for rv in xds.data_vars.values():
         if xds.ylat in rv.dims and xds.xlon in rv.dims: break
     if dask.is_dask_collection(rv):
-        chunks = {dim:chk for dim,chk in zip(rv.dims, rv.encoding['chunksizes']) if dim in dims}
+        chunks = {dim:max(chk) for dim,chk in zip(rv.dims, rv.chunks) if dim in dims}
     else:
         chunks = None # don't chunk if nothing else is chunked...
     # add constant variables
-    if 'lat2D' in const_list or 'lon2D' in const_list:
+    llat2D = 'lat2D' in const_list; llon2D = 'lon2D' in const_list  
+    if llat2D or llon2D:
         # add geographic coordinate fields 
         if grid is None: 
-            raise NotImplementedError() # probably a rare case, since datasets need to be on a common grid
+            # infer from lat/lon coordinates
+            if 'lon' in xds.dims and 'lat' in xds.dims:
+                xlon = xds['lon'].values; xlat = xds['lat'].values
+                lon2D,lat2D = np.meshgrid(xlon,xlat)
+                assert lon2D.shape == lat2D.shape
+                assert lon2D.shape == (len(xlat),len(xlon)), lon2D.shape
+            else:
+                raise DatasetError("Need latitude and longitude coordinates or GridDef object to infer lat2D or lon2D.")
         else:
+            # get fields from griddef
             from geodata.gdal import loadPickledGridDef
-            griddef = loadPickledGridDef(grid='son2')
-            # add local latitudes
-            if 'lat2D' in const_list:
-                atts = dict(name='lat2d', long_name='Latitude', units='deg N')
-                xvar = xr.DataArray(data=griddef.lat2D, attrs=atts, dims=dims)
-                if chunks: xvar = xvar.chunk(chunks=chunks)
-                xds['lat2D'] = xvar
-            # add local longitudes
-            if 'lon2D' in const_list:
-                atts = dict(name='lon2d', long_name='Longitude', units='deg E')
-                xvar = xr.DataArray(data=griddef.lon2D, attrs=atts, dims=dims)
-                if chunks: xvar = xvar.chunk(chunks=chunks)
-                xds['lon2D'] = xvar 
+            griddef = loadPickledGridDef(grid=grid)
+            lat2D = griddef.lat2D; lon2D = griddef.lon2D
+        # add local latitudes
+        if llat2D:
+            atts = dict(name='lat2d', long_name='Latitude', units='deg N')
+            xvar = xr.DataArray(data=lat2D, attrs=atts, dims=dims)
+            if chunks: xvar = xvar.chunk(chunks=chunks)
+            xds['lat2D'] = xvar
+        # add local longitudes
+        if llon2D:
+            atts = dict(name='lon2d', long_name='Longitude', units='deg E')
+            xvar = xr.DataArray(data=lon2D, attrs=atts, dims=dims)
+            if chunks: xvar = xvar.chunk(chunks=chunks)
+            xds['lon2D'] = xvar 
     if 'zs' in const_list:
         print("Loading of surface/topographic elevation is not yet implemented")
     return xds        
@@ -196,7 +210,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
             # native MergedForcing
             ds_args.update(folder=daily_folder, filename_pattern=netcdf_filename)
             argslist = ['grid', ] # specific arguments for merged dataset variables
-            if varlist is None: varlist = list(varatts.keys())
+            if varlist is None: varlist = default_varlist
             loadFunction = loadXArray
         else:
             # daily data from other datasets
@@ -347,15 +361,18 @@ if __name__ == '__main__':
 #   work_loads += ['print_grid']
 #   work_loads += ['compute_derived']
 #   work_loads += ['load_Daily']
-#   work_loads += ['monthly_mean'          ]
-#   work_loads += ['load_TimeSeries'      ]
+  work_loads += ['monthly_mean'          ]
+  work_loads += ['load_TimeSeries'      ]
   work_loads += ['monthly_normal'        ]
   work_loads += ['load_Climatology'      ]
 
   # some settings
-  grid = None
+#   resolution = 'CA12'
+  resolution = 'SON60'  
+#   grid = None
 #   grid = 'hd1' # small Quebec grid
   grid = 'son2' # high-res Southern Ontario
+#   grid = 'on1'
  
   ts_name = 'time_stamp'
   
@@ -444,9 +461,9 @@ if __name__ == '__main__':
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
 #         time_slice = ('2011-01-01','2011-12-31') # inclusive
         time_slice = None
-        varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
-        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True, 
-                                      lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
+        varlist = dataset_varlist
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True,
+                                      resolution=resolution, lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
         print(xds)
         print('')
         
@@ -480,25 +497,43 @@ if __name__ == '__main__':
                              
     elif mode == 'load_Daily':
        
+#         resolution = 'SON60'; grid = None
+       
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
-        varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
-#         varlist = {'NRCan':None}
-        dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
+#         varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
+#         varlist = {'NRCan':None,} # 'const':['lat2D']}
+        varlist = dataset_varlist
+#         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
+#         varlist = {'NRCan':['Tmin','Tmax'], 'const':['lat2D']}
+        dataset_args = None
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
-        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=dataset_args, 
-                                      time_slice=time_slice, lautoChunk=True)
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, 
+                                      bias_correction='rfbc', resolution=resolution,
+                                      time_slice=time_slice, lautoChunk=True, lskip=True)
         print(xds)
         print('')
         print(xds.attrs)
         print('')
+        # check lat2D array for correct order
+        if 'lat2D' in xds.variables:
+            print('')
+            print(xds['lat2D'])
+            print('Lat2D[0,:]:')
+            print(xds['lat2D'].values[0,0:5])
+            print('Lat2D[:,0]:')
+            print(xds['lat2D'].values[0:5,0])
+            if 'is_projected' not in xds.attrs or xds.attrs['is_projected'] == 0: # projected coords deviate from this
+                assert np.diff(xds['lat2D'].values[0,:]).sum() == 0, xds['lat2D'].values[0,0:5]
+                assert np.diff(xds['lat2D'].values[:,0]).sum() > 0, xds['lat2D'].values[0:5,0]
 #         # check for zeros in temperature field... (Kelvin!)
 #         for varname in ('T2','Tmin','Tmax'):
 #             if varname in xds:
 #                 xvar = xds[varname]
 #                 zeros = xvar < 100
-#                 print(varname,zeros.data.sum())            
+#                 print(varname,zeros.data.sum())
+        print('')            
         for varname,xv in xds.variables.items(): 
             if xv.ndim == 3: break
         xv = xds[varname] # get DataArray instead of Variable object
@@ -524,22 +559,27 @@ if __name__ == '__main__':
         #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
+        clim_stns = ['UTM','Elora']
 #         derived_varlist = ['dask_test']; load_list = ['T2']
-        derived_varlist = ['pet_pt']; load_list = ['T2']; clim_stns = ['UTM','Elora']
-#         derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stns = ['UTM','Elora']
+#         derived_varlist = ['pet_pt']; load_list = ['T2']
+#         derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
 #         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
 #         derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
+        derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
+#         derived_varlist = ['pet_pts','pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stns = ['UTM','Elora'] # PET approximations with radiation
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
-        grid = 'son2'
-        resolution = 'CA12'
+#         grid = 'son2'; resolution = 'CA12'
+#         grid = None; resolution = 'SON60'
+        grid = 'son2'; resolution = 'SON60'
+        
         
         # optional slicing (time slicing completed below)
-#         start_date = None; end_date = None # auto-detect available data
-        start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
+        start_date = None; end_date = None # auto-detect available data
+#         start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
 #         start_date = '2011-01-01'; end_date = '2011-04-01'
 #         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
@@ -550,6 +590,7 @@ if __name__ == '__main__':
         time_slice = (start_date,end_date) # slice time
         dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction='rfbc', 
                                           resampling=None, time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
+#         dataset = dataset.unify_chunks()
         
         
         # load time coordinate
@@ -657,7 +698,8 @@ if __name__ == '__main__':
                 assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
                 swe = dataset['snow'].fillna(0) # just pretend there is no snow...
                 assert swe.attrs['units'] == 'kg/m^2', swe.attrs['units']
-                xvar = ref_var - swe.differentiate('time', datetime_unit='s')
+                dswe = swe.differentiate('time', datetime_unit='s')
+                xvar = ref_var - dswe
                 xvar = xvar.clip(min=0,max=None) # remove negative values
             else:
                 raise NotImplementedError(varname)
@@ -681,8 +723,11 @@ if __name__ == '__main__':
             if varname in default_dataset_index:
                 orig_ds_name = default_dataset_index[varname]
                 ds_attrs['name'] = orig_ds_name 
-                resampling = xvar.attrs['resampling']
-                ds_attrs['resampling'] = resampling
+                if grid is None:
+                    resampling = None
+                else:
+                    resampling = xvar.attrs['resampling']
+                    ds_attrs['resampling'] = resampling
             else: 
                 ds_attrs['name'] = 'MergedForcing'
                 if 'resampling' in xvar.attrs: del xvar.attrs['resampling']

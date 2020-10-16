@@ -66,7 +66,7 @@ varatts = dict(Tmax    = dict(name='Tmax', units='K'), # 2m maximum temperature
 
 tsvaratts = varatts.copy()
 # list of variables to load
-varlist = list(varatts.keys()) # also includes coordinate fields    
+varlist = list(varatts.keys()) # also includes coordinate fields
 # variable and file lists settings
 nofile = ('T2','solprec','lat','lon','time') # variables that don't have their own files
 
@@ -119,8 +119,7 @@ def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resoluti
     from geospatial.xarray_tools import loadXArray
     if folder is None: folder = daily_folder
     if resolution is None: resolution = 'CA12' # default
-    if resolution == 'CA12':
-        default_varlist = list(day12_derived) + [atts['name'] for atts in day12_vardefs.values()]
+    default_varlist = res_varlists.get(resolution, None)
     xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=None, resolution=resolution,
                      filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
                      geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
@@ -504,6 +503,7 @@ day12_defaults = dict(axes=('year','day',None,None), dtype=np.float32, fillValue
 day12_vardefs = dict(maxt = dict(grid='CA12', name='Tmax', units='K', offset=273.15, alt_name='max', **day12_defaults), # 2m maximum temperature, originally in degrees Celsius
                      mint = dict(grid='CA12', name='Tmin', units='K', offset=273.15, alt_name='min', **day12_defaults), # 2m minimum temperature
                      pcp  = dict(grid='CA12', name='precip', units='kg/m^2/s', scalefactor=1./86400., **day12_defaults),) # total precipitation
+day12_varlist = [atts['name'] for atts in day12_vardefs.values()]
 # define original split and merged time axes
 day12_axdefs = dict(time = dict(name='time', units='day', coord=np.arange(1,366)),) # time coordinate
 day12_matts = dict(name='time', units='day', long_name='Days since 1979-01-01', merged_axes = ('year','day'))
@@ -521,12 +521,20 @@ son60_vardefs = dict(maxt = dict(grid='SON60', name='Tmax', units='K', offset=27
                      pcp  = dict(grid='SON60', name='precip', units='kg/m^2/s', scalefactor=1./86400., **day12_defaults), # unadjusted total precipitation
                      pcp_adj  = dict(grid='SON60', name='precip_adj', units='kg/m^2/s', scalefactor=1./86400., 
                                      alt_name='pcp', **day12_defaults),) # adjusted total precipitation
+son60_varlist = [atts['name'] for atts in son60_vardefs.values()]
 # define original split and merged time axes
 son60_axdefs = day12_axdefs; son60_matts = day12_matts 
 # N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
 son60_derived = ('T2',) # no snow or rain yet
 son60_grid_pattern = day12_grid_pattern; son60_var_pattern = day12_var_pattern 
 son60_title = 'NRCan Daily Gridded Time-series for Southern Ontario'
+
+
+# default varlists for daily variables for different resolutions
+added_variables = ['pet_hog','pet_har','pet_haa','pet_th']
+res_varlists = dict(CA12  = list(day12_derived) + day12_varlist + added_variables,
+                    SON60 = list(son60_derived) + son60_varlist + added_variables,
+                    )
 
 
 def loadASCII_Daily(name=dataset_name, title=day12_title, atts=None, derived_vars=day12_derived, varatts=varatts, snow_density='maritime',
@@ -680,7 +688,7 @@ if __name__ == '__main__':
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
 #     mode = 'convert_Daily'
-    mode = 'convert_to_netcdf';
+    mode = 'convert_to_netcdf'
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
