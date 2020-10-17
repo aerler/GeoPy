@@ -361,8 +361,8 @@ if __name__ == '__main__':
 #   work_loads += ['print_grid']
 #   work_loads += ['compute_derived']
 #   work_loads += ['load_Daily']
-  work_loads += ['monthly_mean'          ]
-  work_loads += ['load_TimeSeries'      ]
+#   work_loads += ['monthly_mean'          ]
+#   work_loads += ['load_TimeSeries'      ]
   work_loads += ['monthly_normal'        ]
   work_loads += ['load_Climatology'      ]
 
@@ -404,8 +404,8 @@ if __name__ == '__main__':
     elif mode == 'monthly_normal':
   
         # optional slicing (time slicing completed below)
-        start_date = '2011-01'; end_date = '2011-12'; varlist = None
-#         start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
+#         start_date = '2011-01'; end_date = '2011-12'; varlist = None
+        start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
   
         # start operation
         start = time.time()
