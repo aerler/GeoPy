@@ -2007,7 +2007,7 @@ if __name__ == "__main__":
 #     specific_tests += ['Ensemble']
 #     specific_tests += ['DatasetArithmetic']
 #     specific_tests += ['DistributionVariables'] 
-#     specific_tests += ['StatsTests']   
+#     specific_tests += ['StatsTests']
 #     specific_tests += ['UnaryArithmetic']
 #     specific_tests += ['BinaryArithmetic']
 #     specific_tests += ['Copy']

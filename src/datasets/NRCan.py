@@ -124,6 +124,8 @@ def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resoluti
                      filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
                      geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
     xds.attrs['name'] = 'NRCan'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries'
+    if 'resolution' not in xds.attrs: xds.attrs['resolution'] = resolution
+    if 'resampling' not in xds.attrs: xds.attrs['resampling'] = resampling 
     return xds
 
 

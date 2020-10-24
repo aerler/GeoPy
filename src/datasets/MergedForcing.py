@@ -181,6 +181,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     ''' function to load and merge data from different high-resolution datasets (e.g. SnoDAS or NRCan) using xarray;
         typical dataset-agnostic arguments: grid=str, lgeoref=True, geoargs=dict, chunks=dict, lautoChunk=False, 
         typical dataset-specific arguments: folder=str, resampling=str, resolution=str, bias_correction=str '''
+    global_ds_atts_keys = ('resolution','bias_correction','resampling')
     # figure out varlist
     if varname and varlist: raise ValueError(varname,varlist)
     elif varname:
@@ -201,6 +202,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     const_list = dataset_varlists.pop('const', [])
     ## load datasets
     ds_list = []
+    global_ds_atts_dict = dict()
     for dataset,varlist in dataset_varlists.items():
         if ldebug: print("Loading", dataset, '\n', varlist, '\n')
         # prepare kwargs
@@ -218,16 +220,22 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
             loadFunction = ds_mod.loadDailyTimeSeries
             argslist = inspect.getfullargspec(loadFunction); argslist = argslist.args # list of actual arguments
         # remove some args that don't apply
-        for key in ('resolution','bias_correction'): # list of dataset-specific arguments that have to be controlled
+        for key in global_ds_atts_keys: # list of dataset-specific arguments that have to be controlled
             if key not in argslist and key in ds_args: del ds_args[key]
         # load time series and and apply some formatting to vars
         ds = loadFunction(varlist=varlist, **ds_args)
         # add some dataset attributes to variables, since we will be merging datasets
         for var in ds.variables.values(): var.attrs['dataset_name'] = dataset_name
-        if 'resampling' in ds.attrs:
-            for var in ds.data_vars.values(): var.attrs['resampling'] = ds.attrs['resampling']
-        if 'bias_correction' in ds_args:
-            for var in ds.data_vars.values(): var.attrs['bias_correction'] = ds_args['bias_correction']
+        for key in global_ds_atts_keys: # list of dataset-specific arguments that have to be controlled
+            if key in ds.attrs: value = ds.attrs[key]
+            elif key in ds_args: value = ds_args[key]
+            else: value = None
+            if value is not None:
+                for var in ds.data_vars.values(): var.attrs[key] = value
+                if key not in global_ds_atts_dict: 
+                    global_ds_atts_dict[key] = value
+                elif global_ds_atts_dict[key] != value:
+                    global_ds_atts_dict[key] = None # only keep if all equal
         if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time
         ds_list.append(ds)
     # merge datasets and attributed
@@ -235,7 +243,8 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     xds = xr.merge(ds_list, compat=compat, join=join, fill_value=fill_value)
     for ds in ds_list[::-1]: xds.attrs.update(ds.attrs) # we want MergedForcing to have precedence
     xds.attrs['name'] = 'MergedForcing'; xds.attrs['title'] = 'Merged Forcing Daily Timeseries'
-    if 'resampling' in xds.attrs: del xds.attrs['resampling'] # does not apply to a merged dataset
+    for key,value in global_ds_atts_dict.items():
+        if value is not None: xds.attrs[key] = value
     ## add additional fields
     if ldebug: print("Adding Constants:", const_list, '\n',)
     xds = addConstantFields(xds, const_list=const_list, grid=kwargs.get('grid',None))
@@ -361,8 +370,8 @@ if __name__ == '__main__':
 #   work_loads += ['print_grid']
 #   work_loads += ['compute_derived']
 #   work_loads += ['load_Daily']
-#   work_loads += ['monthly_mean'          ]
-#   work_loads += ['load_TimeSeries'      ]
+  work_loads += ['monthly_mean'          ]
+  work_loads += ['load_TimeSeries'      ]
   work_loads += ['monthly_normal'        ]
   work_loads += ['load_Climatology'      ]
 
@@ -503,9 +512,10 @@ if __name__ == '__main__':
 #         varlist = ['precip','snow','liqwatflx']
 #         varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
 #         varlist = {'NRCan':None,} # 'const':['lat2D']}
-        varlist = dataset_varlist
+#         varlist = dataset_varlist
+#         varlist = default_varlist
 #         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
-#         varlist = {'NRCan':['Tmin','Tmax'], 'const':['lat2D']}
+        varlist = {'NRCan':['Tmin','Tmax'], 'const':['lat2D']}
         dataset_args = None
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
