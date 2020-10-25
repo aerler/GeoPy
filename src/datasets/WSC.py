@@ -153,7 +153,7 @@ class LakeSet(ShapeSet,Lake):
  
 # shape class for basins
 class Basin(Shape):
-  ''' a Shape class for river basins with associated gage station information '''
+  ''' a Shape class for river basins with associated gauge station information '''
   def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
                subbasins=None, rivers=None, stations=None, data_source=None, shapetype=None):
     ''' save meta information; should be initialized from a BasinInfo instance '''
@@ -163,9 +163,10 @@ class Basin(Shape):
                                load=load, ldebug=ldebug, data_source=data_source, shapetype=shapetype)
     # figure out if we are the outline/main basin
     name = self.name
-    if 'Whole{:s}'.format(self.name) in subbasins: name = 'Whole{:s}'.format(self.name)
-    assert name in subbasins, (name,subbasins)
-    # add gage station from dict (based on name)
+    if subbasins:
+        if 'Whole{:s}'.format(self.name) in subbasins: name = 'Whole{:s}'.format(self.name)
+        assert name in subbasins, (name,subbasins)
+    # add gauge station from dict (based on name)
     if isinstance(subbasins,dict) and name in subbasins and subbasins[name]:
       maingage = subbasins[name]
       if isinstance(station, (list,tuple)): maingage = '{}_{}'.format(*maingage)        
@@ -217,7 +218,7 @@ class BasinSet(ShapeSet,Basin):
 
 # shape class for catchments associated with a gauge
 class Catchment(Shape):
-  ''' a Shape class for the drainage area (catchment) associated wuth a gauge station '''
+  ''' a Shape class for the drainage area (catchment) associated with a gauge station '''
   gauge = None
   metadata = None
   

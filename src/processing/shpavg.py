@@ -19,8 +19,7 @@ from geodata.misc import DateError, DatasetError, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
 from datasets import gridded_datasets
-from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML,\
-  getProjectVars
+from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML, getProjectVars
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 
@@ -200,7 +199,7 @@ if __name__ == '__main__':
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 8; ldebug = False # for quick computations
     modes = ('time-series','climatology')
-    modes = ('climatology',)
+#     modes = ('climatology',)
 #     modes = ('time-series',) 
     loverwrite = True
     varlist = None
@@ -229,7 +228,8 @@ if __name__ == '__main__':
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
-    datasets += ['Unity']; periods = [15,30] 
+#     datasets += ['Unity']; periods = [15,30] 
+    datasets += ['MergedForcing']; periods = [(2011,2018)]; grid = 'son2'
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -239,8 +239,8 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
 #     WRF_project = None
-#     WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
-    WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
+    WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
+#     WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
 #     WRF_experiments = None
     WRF_experiments = []
 #     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
@@ -295,10 +295,10 @@ if __name__ == '__main__':
 #     shapes['provinces'] = ['BC','AB'] # Canadian provinces from EC module
 #     shapes['basins'] = ['PSB','NorthernPSB','SouthernPSB','FRB','UpperFRB','LowerFRB','CRB',
 #                         'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
-    shape_name = 'abshp' # Alberta shapes
+#     shape_name = 'abshp' # Alberta shapes
 #     shapes['provinces'] = ['AB'] # Canadian provinces from EC module
-    grid = 'arb2'
-    shapes['basins'] = ['ARB_HTH','ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
+#     grid = 'arb2'
+#     shapes['basins'] = ['ARB_HTH','ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
 #     shape_name = 'glbshp' # only Canadian river basins
 #     shapes['provinces'] = ['MB','ON','QC'] # Canadian provinces from EC module
 #     shapes['basins'] = ['LandGLB','GLB','SON','GRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW','SNW','PRW'] # river basins (in Canada) from WSC module
@@ -307,6 +307,9 @@ if __name__ == '__main__':
 #     shapes['great_lakes'] = None # the Great Lakes of North America
 #     shape_name = 'oncat' # Ontario catchment areas for gauges
 #     shapes['gauges'] = ['02BB003', '02EA011', '02GE003', '02EB008', '02EB011', '02GB001', '02LB005'] # selected gauges for Fraser's project (plus Grand River and South Nation)
+    shape_name = 'sonshp' # Great Lakes
+    shapes['son_watersheds'] = None # the Great Lakes of North America
+    shapes['basins'] = ['SON','SNW',] # river basins (in Canada) from WSC module
  
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]

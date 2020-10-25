@@ -56,7 +56,7 @@ varlist = varatts.keys()
 ignore_list = []
 
 # settings for NetCDF-4 files
-avgfolder = root_folder + dataset_name.lower()+'avg/' 
+avgfolder = root_folder + 'mergedavg/' 
 avgfile   = '{DS:s}_{GRD:s}_clim_{PRD:s}.nc' # the filename needs to be extended: biascorrection, grid and period
 tsfile    = '{DS:s}_{GRD:s}_monthly.nc' # extend with biascorrection, variable and grid type
 # daily data
