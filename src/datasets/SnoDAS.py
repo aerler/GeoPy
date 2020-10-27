@@ -482,19 +482,19 @@ def loadSnoDAS_ShpTS(name=dataset_name, title=dataset_name, shape=None, varlist=
   if lfixTime and 'units' in time.ncvar.ncattrs():
       tunits = time.ncvar.getncattr('units')
       if tunits.startswith('days since') and time.units == 'month':
-        from datetime import datetime
-        from dateutil import relativedelta
-        from geodata.base import Axis
-        #print(tunits[11:21])
-        startdate = datetime.strptime(tunits[11:21], '%Y-%m-%d'); 
-        date1979 = datetime.strptime('1979-01-01', '%Y-%m-%d')
-        r = relativedelta.relativedelta(startdate, date1979)
-        #print(r.years*12+r.months)
-        coord = r.years*12+r.months + np.arange(len(time))
-        atts = time.atts.copy()
-        atts['long_name'] = 'month since 1979-01'
-        new_time = Axis(coord=coord, atts=atts)
-        dataset.replaceAxis(new_time, asNC=False)
+          from datetime import datetime
+          from dateutil import relativedelta
+          from geodata.base import Axis
+          #print(tunits[11:21])
+          startdate = datetime.strptime(tunits[11:21], '%Y-%m-%d'); 
+          date1979 = datetime.strptime('1979-01-01', '%Y-%m-%d')
+          r = relativedelta.relativedelta(startdate, date1979)
+          #print(r.years*12+r.months)
+          coord = r.years*12+r.months + np.arange(len(time))
+          atts = time.atts.copy()
+          atts['long_name'] = 'month since 1979-01'
+          new_time = Axis(coord=coord, atts=atts)
+          dataset.replaceAxis(new_time, asNC=False)
         
   # return formatted dataset
   return dataset

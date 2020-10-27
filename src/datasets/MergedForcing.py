@@ -83,7 +83,7 @@ default_varlist = [varname for varname in varlist if varname not in default_data
 ## helper functions
 
 def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, resolution=None, bias_correction=None, 
-                      mode=None, period=None, lcreateFolder=True):
+                      mode=None, period=None, shape=None, station=None, lcreateFolder=True):
     ''' function to provide the folder and filename for the requested dataset parameters '''
     if mode is None:
         mode = 'clim' if period else 'daily'
@@ -101,6 +101,11 @@ def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, re
         ds_str = ds_str_rs = dataset.lower()
     # construct filename
     gridstr = '_' + grid.lower() if grid else ''
+    # add shape or station identifier in front of grid
+    if shape and station: 
+        raise DatasetError((shape,station))
+    elif shape: gridstr = '_' + shape.lower() + gridstr
+    elif station: gridstr = '_' + station.lower() + gridstr
     bcstr = '_' + bias_correction.lower() if bias_correction else ''
     if mode.lower() == 'daily': name_str = bcstr + '_' + varname.lower() + gridstr
     else: name_str = bcstr + gridstr
@@ -254,12 +259,13 @@ loadDailyTimeSeries = loadMergedForcing_Daily
 
 
 def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, 
-                          mode=None, period=None, lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
+                          shape=None, station=None, mode=None, period=None, lxarray=True, lgeoref=False, geoargs=None, 
+                          ltoMonthly=None, lfromMonthly=False, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
     # resolve folder and filename
     file_args = {key:kwargs.pop(key,None) for key in ('resampling', 'resolution', 'bias_correction')}
     folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, mode=mode, period=period, 
-                                        lcreateFolder=False, **file_args)
+                                        shape=shape, station=station, lcreateFolder=False, **file_args)
     # remove some common arguments that have no meaning
     if name is None: name = dataset_name
     for key in ('resolution','bias_correction'):
@@ -269,7 +275,7 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
     if lxarray: 
         ## load as xarray dataset
         # set options
-        if lmonthly: kwargs['decode_times'] = False
+        if lfromMonthly: kwargs['decode_times'] = False
         # load  dataset
         xds = xr.open_dataset(folder+filename, **kwargs)
         # update varatts and prune
@@ -279,8 +285,8 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
         # load time stamps (like coordinate variables)
         if 'time_stamp' in xds: xds['time_stamp'].load()
         # fix time axis (deprecated - should not be necessary anymore)
-        if lmonthly:
-            warn("'lmonthly=True' should only be used to convert simple monthly indices into 'datetime64' coordinates.")
+        if lfromMonthly and xds['time'].attrs['units'].lower() == 'month':
+            warn("'ldaily=True' should only be used to convert simple monthly indices into 'datetime64' coordinates.")
             # convert a monthly time index into a daily index, anchored at the first day of the month
             tattrs = xds['time'].attrs.copy()
             tattrs['long_name'] = 'Calendar Day'
@@ -290,7 +296,8 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
             tdata = np.arange(start_date,end_date, dtype='datetime64[M]')
             assert len(tdata) == len(xds['time'])
             tvar = xr.DataArray(tdata, dims=('time'), name='time', attrs=tattrs)
-            xds = xds.assign_coords(time=tvar)        
+            xds = xds.assign_coords(time=tvar)
+              
         # add projection
         if lgeoref:
             if geoargs is None: geoargs = dict() 
@@ -301,6 +308,26 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
         # load dataset
         dataset = DatasetNetCDF(name=name, filelist=[folder+filename], varlist=varlist, multifile=False, 
                                 varatts=varatts, **kwargs)
+        # convert daily time axis values to monthly
+        time =dataset.time
+        if ltoMonthly and 'units' in time.ncvar.ncattrs():
+            tunits = time.ncvar.getncattr('units')
+            if tunits.startswith('days since'):
+                from datetime import datetime
+                from dateutil import relativedelta
+                from geodata.base import Axis
+                #print(tunits[11:21])
+                startdate = datetime.strptime(tunits[11:21], '%Y-%m-%d'); 
+                date1979 = datetime.strptime('1979-01-01', '%Y-%m-%d')
+                r = relativedelta.relativedelta(startdate, date1979)
+                #print(r.years*12+r.months)
+                coord = r.years*12+r.months + np.arange(len(time))
+                atts = time.atts.copy()
+                atts['long_name'] = 'month since 1979-01'
+                atts['units'] = 'month'
+                new_time = Axis(coord=coord, atts=atts)
+                dataset.replaceAxis(new_time, asNC=False)
+
         # fix axes units:
         for ax in ('x','y','lat','lon'):
             if ax in dataset.axes: dataset.axes[ax].atts.update(axes_varatts[ax])
@@ -312,17 +339,32 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
 
 
 def loadMergedForcing_TS(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None,
-                         lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
+                         lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
     return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
-                                 mode='monthly', period=None, lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
+                                 mode='monthly', period=None, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
+                                 ltoMonthly=ltoMonthly, lfromMonthly=lfromMonthly, shape=None, station=None, **kwargs)
 
 def loadMergedForcing(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, period=None,
-                      lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
+                      lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly normal merged forcing data '''
     return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
-                                 mode='clim', period=period, lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
+                                 mode='clim', period=period, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
+                                 ltoMonthly=ltoMonthly, lfromMonthly=lfromMonthly, shape=None, station=None, **kwargs)
 
+def loadMergedForcing_ShpTS(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, shape=None,
+                            lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
+    ''' function to load monthly transient merged forcing data averaged over shapes '''
+    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
+                                 mode='monthly', period=None, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
+                                 ltoMonthly=ltoMonthly, lfromMonthly=lfromMonthly, shape=shape, station=None, **kwargs)
+
+def loadMergedForcing_Shp(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, period=None,
+                          shape=None, lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
+    ''' function to load monthly normal merged forcing data averaged over shapes '''
+    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
+                                 mode='clim', period=period, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
+                                 ltoMonthly=ltoMonthly, lfromMonthly=lfromMonthly, shape=shape, station=None, **kwargs)
 
 ## Dataset API
 
@@ -345,8 +387,8 @@ def loadTimeSeries(lxarray=False, **kwargs): return loadMergedForcing_TS(lxarray
 def loadClimatology(lxarray=False, **kwargs): return loadMergedForcing(lxarray=lxarray, **kwargs)
 loadStationClimatology = None # climatologies without associated grid (e.g. stations) 
 loadStationTimeSeries  = None # time-series without associated grid (e.g. stations)
-loadShapeClimatology   = None # climatologies without associated grid (e.g. provinces or basins) 
-loadShapeTimeSeries    = None # time-series without associated grid (e.g. provinces or basins)
+loadShapeClimatology   = loadMergedForcing_Shp # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries    = loadMergedForcing_ShpTS # time-series without associated grid (e.g. provinces or basins)
 
 
 ## abuse for testing
@@ -367,13 +409,15 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   work_loads = []
+#   work_loads += ['load_Point_Climatology']
+  work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
 #   work_loads += ['compute_derived']
 #   work_loads += ['load_Daily']
-  work_loads += ['monthly_mean'          ]
-  work_loads += ['load_TimeSeries'      ]
-  work_loads += ['monthly_normal'        ]
-  work_loads += ['load_Climatology'      ]
+#   work_loads += ['monthly_mean'          ]
+#   work_loads += ['load_TimeSeries'      ]
+#   work_loads += ['monthly_normal'        ]
+#   work_loads += ['load_Climatology'      ]
 
   # some settings
 #   resolution = 'CA12'
@@ -382,6 +426,7 @@ if __name__ == '__main__':
 #   grid = 'hd1' # small Quebec grid
   grid = 'son2' # high-res Southern Ontario
 #   grid = 'on1'
+  pntset = 'sonshp'
  
   ts_name = 'time_stamp'
   
@@ -396,6 +441,28 @@ if __name__ == '__main__':
         print(griddef)
         print(griddef.lat2D)
         
+    elif mode == 'load_Point_Climatology':
+      
+        # load point climatology
+        print('')
+        if pntset in ('sonshp'): dataset = loadMergedForcing_Shp(shape=pntset, grid=grid, period=(2011,2018))
+        else: raise NotImplementedError(pntset)
+        print(dataset)
+        print('')
+        print((dataset.time))
+        print((dataset.time.coord))
+      
+    elif mode == 'load_Point_Timeseries':      
+      
+        # load point climatology
+        print('')
+        if pntset in ('sonshp'): dataset = loadMergedForcing_ShpTS(shape=pntset, grid=grid, )
+        else: raise NotImplementedError(pntset)
+        print(dataset)
+        print('')
+        print((dataset.time))
+        print((dataset.time.coord))
+
     elif mode == 'load_Climatology':
        
         lxarray = False

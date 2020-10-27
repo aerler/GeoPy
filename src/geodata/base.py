@@ -1327,7 +1327,7 @@ class Variable(object):
     elif mode == 'all': lall = True
     else: raise ArgumentError 
     # check variables
-    if self.dtype.kind in ('S',): 
+    if self.dtype.kind in ('S','U'): 
       if lcheckVar: raise VariableError("Reduction does not work with string Variables!")
       else: return None
     # reduction axis
@@ -1423,7 +1423,7 @@ class Variable(object):
     if not lflatten and axis is None: 
       if self.ndim > 1: raise ArgumentError
       else: lflatten = True # treat both as flat arrays...
-    if self.dtype.kind in ('S',): 
+    if self.dtype.kind in ('S','U'): 
       if lcheckVar: raise VariableError("Histogram does not work with string Variables!")
       else: return None
     if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
@@ -1503,7 +1503,7 @@ class Variable(object):
     if not lflatten and axis is None: 
       if self.ndim > 1: raise ArgumentError
       else: lflatten = True # treat both as flat arrays...
-    if self.dtype.kind in ('S',): 
+    if self.dtype.kind in ('S','U'): 
       if lcheckVar: raise VariableError("CDF does not work with string Variables!")
       else: return None
     if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
@@ -1552,7 +1552,7 @@ class Variable(object):
     if not lflatten and axis is None: 
       if self.ndim > 1: raise ArgumentError
       else: lflatten = True # treat both as flat arrays...
-    if self.dtype.kind in ('S',): 
+    if self.dtype.kind in ('S','U'): 
       if lcheckVar: raise VariableError("Percentiles do not work with string Variables!")
       else: return None
     if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
@@ -1623,7 +1623,7 @@ class Variable(object):
     if not lflatten and axis is None: 
       if self.ndim > 1: raise ArgumentError
       else: lflatten = True # treat both as flat arrays...
-    if self.dtype.kind in ('S',): 
+    if self.dtype.kind in ('S','U'): 
       if lcheckVar: raise VariableError("Statistical tests does not work with string Variables!")
       else: return None
     var = self # to avoid confusion later
@@ -1995,7 +1995,7 @@ class Variable(object):
     if not self.hasAxis(taxis): 
       if lcheckAxis: raise AxisError('Reduction to climatology requires a time axis!')
       else: return None # just skip and do nothing
-    if self.dtype.kind in ('S',): 
+    if self.dtype.kind in ('S','U'): 
       if lcheckVar: raise VariableError("Reduction to climatology does not work with string Variables!")
       else: return None
     data_view = self._getCompleteYears(taxis=taxis, ltrim=ltrim, asVar=False, lcheck=lstrict)
@@ -2264,7 +2264,7 @@ class Variable(object):
               rescale=None, asVar=True, lcheckAxis=True, lcheckVar=True):
     ''' interpolate a one-dimensional point vector to a regular 2D grid '''
     # some eligibility checks
-    if self.dtype.kind in ('S',): 
+    if self.dtype.kind in ('S','U'): 
         if lcheckVar: 
             raise VariableError("Standardization does not work with string Variables!")
         else: 
@@ -2320,7 +2320,7 @@ class Variable(object):
                   lstandardize=True, ldetrend=False, ltrend=False, lsmooth=False, lresidual=False, 
                   degree=1, rcond=None, w=None, window_len=11, window='hanning', casting=casting_rule):
     ''' Standardize Variable, i.e. subtract mean and divide by standard deviation '''
-    if self.dtype.kind in ('S',): 
+    if self.dtype.kind in ('S','U'): 
       if lcheckVar: raise VariableError("Standardization does not work with string Variables!")
       else: return None
     if name is None: name = '{:s}_std' # allow use of original name in function
