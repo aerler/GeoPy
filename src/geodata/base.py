@@ -27,7 +27,8 @@ from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile, tabulate
      
 # used for climatology and seasons
-monthlyUnitsList = ('month','months','month of the year')
+monthlyUnitsList = ('month','months','month of the year','calendar month')
+dailyUnitsList = ('day','days','day of the year','calendar day')
 # global casting rule (for operations between arrays of different type)
 casting_rule = 'same_kind' # default since NumPy 1.7
 
@@ -1725,26 +1726,40 @@ class Variable(object):
       newvar = self.copy(data=data, axes=axes, atts=self.atts if atts is None else atts)
     return newvar
     
-  def _checkMonthlyAxis(self, taxis='time', lbegin=True, lclim=False):
+  def _checkTimeAxis(self, taxis='time', lbegin=True, lclim=False):
     ''' helper function to check certain assumptions about the time axis '''
     time = self.getAxis(taxis); tcoord = time.coord
     # make sure the time axis is well-formatted, because we are making a lot of assumptions!
     if lclim:
       if time.units.lower() in monthlyUnitsList: 
-        if np.any(tcoord != np.arange(1,13)): 
-          raise TimeAxisError("Invalid coordinate values for monthly climatology: {}".format(tcoord))
+          time_units = 'M'
+          if np.any(tcoord != np.arange(1,13)): 
+            raise TimeAxisError("Invalid coordinate values for monthly climatology: {}".format(tcoord))
+      elif time.units.lower() in dailyUnitsList: 
+          time_units = 'D'
+          if np.any(tcoord != np.arange(1,366)): 
+            raise TimeAxisError("Invalid coordinate values for daily climatology: {}".format(tcoord))
       else:
-        raise TimeAxisError("Time units='month' required to extract seasons! (got '{:s}')".format(time.units))
+          raise TimeAxisError("Time units='month' required to extract seasons! (got '{:s}')".format(time.units))
     else:
       if any([mu in time.units for mu in monthlyUnitsList]): 
-        if 'since 1979-01' in time.units.lower(): pass
-        elif 'long_name' in time.atts and 'since 1979-01' in time.atts['long_name'].lower(): pass
-        else: 
-            raise TimeAxisError("Unable to determine time offset: {}".format(str(time)))
+          time_units = 'M'
+          if 'since 1979-01' in time.units.lower(): pass
+          elif 'long_name' in time.atts and 'since 1979-01' in time.atts['long_name'].lower(): pass
+          else: 
+              raise TimeAxisError("Unable to determine time offset: {}".format(str(time)))
+      elif any([mu in time.units for mu in dailyUnitsList]): 
+          time_units = 'D'
+          if 'since 1979-01-01' in time.units.lower(): pass
+          elif 'long_name' in time.atts and 'since 1979-01-01' in time.atts['long_name'].lower(): pass
+          else: 
+              raise TimeAxisError("Unable to determine time offset: {}".format(str(time)))
       else:    
-        raise TimeAxisError("Unable to determin time offset: {}".format(str(time)))
+          raise TimeAxisError("Unable to determine time offset: {}".format(str(time)))
     if np.any( np.diff(tcoord, axis=0) != 1 ): 
-      raise TimeAxisError("Time-axis cannot have missing coordinate values (month)!")
+      raise TimeAxisError("Time-axis cannot have missing coordinate values ({})!".format(time_units))
+    # return units
+    return time_units
     
   def seasonalSample(self, season=None, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
                      lwaterYear=False, year_offset=0,
@@ -1754,7 +1769,10 @@ class Variable(object):
     # check input
     if season is not None and self.hasAxis(taxis):
       time = self.getAxis(taxis); itime = self.axisIndex(taxis); tcoord = time.coord
-      if lstrict: self._checkMonthlyAxis(taxis=taxis, lbegin=True, lclim=lclim)
+      if lstrict: 
+          time_unit = self._checkTimeAxis(taxis=taxis, lbegin=True, lclim=lclim)
+          if time_unit != 'M':
+              raise NotImplementedError("Only monthly time units are currently supported for seasonal samples")
       data_array = self.data_array
       if year_offset > 11 and year_offset < 0:
           raise ValueError(year_offset)
@@ -1816,17 +1834,24 @@ class Variable(object):
     if asVar: raise NotImplementedError('currently we can only return a bare array view, not a variable')
     # N.B.: to return a Variable, we would also have to trim/pad the time axis 
     time = self.getAxis(taxis); itime = self.axisIndex(taxis); tcoord = time.coord
-    if lcheck: self._checkMonthlyAxis(taxis=taxis, lbegin=not lfront, lclim=lclim)
+    if lcheck: 
+        time_unit = self._checkTimeAxis(taxis=taxis, lbegin=not lfront, lclim=lclim)
+        if time_unit == 'M': year_divisor = 12
+        elif time_unit == 'D': year_divisor = 365
+        else:
+            raise NotImplementedError("Only monthly and daily time units are currently supported for reduction operations")
+    else:
+        year_divisor = 12
     # offset for typical water year (October to September)
     if lwaterYear: 
         year_offset = 9 # i = 9 will typically be October (incl.)
         ltrim = True; lfront = True; lback = True # only full years
     # define new shape
     if not self.data: raise DataError('Need to load data for trimming and padding.')
-    if lclim: offset = (tcoord[0]-1)%12; over = tcoord[-1]%12
-    else: offset = tcoord[0]%12; over = (tcoord[-1]+1)%12
+    if lclim: offset = (tcoord[0]-1)%year_divisor; over = tcoord[-1]%year_divisor
+    else: offset = tcoord[0]%year_divisor; over = (tcoord[-1]+1)%year_divisor
     if year_offset > 0:
-        offset = (offset - year_offset)%12; over = (over - year_offset)%12
+        offset = (offset - year_offset)%year_divisor; over = (over - year_offset)%year_divisor
     tlen = tcoord.size; data_view = self.data_array
     if lcoord: coord_view = tcoord
     offset = int(offset); over = int(over)
@@ -1839,14 +1864,14 @@ class Variable(object):
     # handle incomplete years
     if offset != 0 or over != 0:
       if ltrim: 
-        start = -offset%12; end = tlen - over
+        start = -offset%year_divisor; end = tlen - over
         data_view = data_view.take(list(range(start,end)), axis=itime) # only use complete years 
         if lcoord: coord_view = coord_view[start:end] # clip time axis as well            
       else:
         front = self.shape[:itime]+(offset,)+self.shape[itime+1:] # shape/size for front padding  
         frontpad = ma.ones(front, dtype=self.dtype) # create a masked array for padding 
         frontpad *= frontpad.fill_value ; frontpad.mask = True
-        end = -over%12 # how much to add at the back
+        end = -over%year_divisor # how much to add at the back
         back = self.shape[:itime]+(end,)+self.shape[itime+1:] # shape/size for back padding
         backpad = ma.ones(back, dtype=self.dtype) # create a masked array for padding 
         backpad *= backpad.fill_value ; backpad.mask = True
@@ -1857,7 +1882,7 @@ class Variable(object):
             front_axis = np.arange(-offset,0,1) + coord_view[0]
             rear_axis = np.arange(1,end+1,1) + coord_view[-1]
             coord_view = np.concatenate((front_axis,coord_view,rear_axis))
-    assert data_view.shape[itime]%12 == 0, data_view.shape # should be divisible by 12 now
+    assert data_view.shape[itime]%year_divisor == 0, data_view.shape # should be divisible by 12 now
     if lcoord and len(coord_view) != data_view.shape[itime]:
         raise AssertionError(len(coord_view),data_view.shape[itime])
     # return padded/trimmed view
@@ -2000,7 +2025,13 @@ class Variable(object):
       else: return None
     data_view = self._getCompleteYears(taxis=taxis, ltrim=ltrim, asVar=False, lcheck=lstrict)
     taxis = self.getAxis(taxis); tax = self.axisIndex(taxis.name)
-    assert data_view.shape[self.axisIndex(taxis)]%12 == 0, data_view.shape # should be divisible by 12 now          
+    if checkUnits: 
+        time_unit = self._checkTimeAxis(taxis=taxis, lbegin=False, lclim=False)
+        if time_unit == 'M': year_divisor = 12
+        elif time_unit == 'D': year_divisor = 365
+        else:
+            raise NotImplementedError("Only monthly and daily time units are currently supported for reduction operations")
+        assert data_view.shape[self.axisIndex(taxis)]%year_divisor == 0, data_view.shape # should be divisible by 12 now          
     # hadling of exceptions: some variables in Datasets should only be averaged
     if mean_list is not None and self.name in mean_list: operation = np.nanmean    
     # modify variable
@@ -2024,11 +2055,11 @@ class Variable(object):
       if varatts is not None: vatts.update(varatts)
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
-    avar =  self.reduce(operation=operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic',
+    avar =  self.reduce(operation=operation, blklen=year_divisor, blkidx=yridx, axis=taxis, mode='periodic',
                         asVar=asVar, axatts=tatts, varatts=varatts, data_view=data_view, 
                         lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
-    assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]
+    assert avar.shape == self.shape[:tax]+(year_divisor,)+self.shape[tax+1:]
     # construct time coordinate
     if asVar:
       if any([units in tatts['units'].lower() for units in monthlyUnitsList]):

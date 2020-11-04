@@ -219,8 +219,8 @@ if __name__ == '__main__':
 #     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'], 'NRCan':'NA12'}
 #     datasets = []
 #     datasets += ['NRCan',]; lLTM = False; resolutions = dict(NRCan='na60_precip')
-#     datasets += ['NRCan']; periods = [(1980,2010),(1970,2000),]; lLTM = False
-#     resolutions = dict(NRCan='na12_maritime')
+    datasets += ['NRCan']; periods = [(1980,2010),(1970,2000),]; lLTM = False
+    resolutions = dict(NRCan='na12_maritime')
 #     datasets += ['SnoDAS',]; periods = [(2011,2019),]; lLTM = False
 #     varlist =  ['liqprec','solprec','snow','snowh','Tsnow','snwmlt','evap_snow','evap_blow','dswe'] # SnoDAS binary + delta SWE
 #     varlist =  ['snow','dswe']; resolutions['SnoDAS'] = ['rfbc'] # SnoDAS RFBC (only SWE and delta SWE)
@@ -229,7 +229,7 @@ if __name__ == '__main__':
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
 #     datasets += ['Unity']; periods = [15,30] 
-    datasets += ['MergedForcing']; periods = [(2011,2018)]; grid = 'son2'
+#     datasets += ['MergedForcing']; periods = [(2011,2018)]; grid = 'son2'
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
