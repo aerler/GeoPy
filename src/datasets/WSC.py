@@ -667,33 +667,6 @@ def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=
 ## abuse main block for testing
 if __name__ == '__main__':
   
-  # test new Catchment class
-  name = '02GB001'
-  catch = Catchment(name=name, ldebug=True)
-  print(catch.station)
-  assert catch.gauge == None
-  
-  gauge = catch.getGaugeSation(lcheck=True)
-  assert isinstance(gauge,GageStation)
-  print(catch.metadata)
-  assert catch.metadata['ID'] == name
-  
-  gauge_ds = catch.getGaugeDataset(lkgs=False)
-  print(gauge_ds)
-  print(gauge_ds.discharge.mean())
-
-  name = '02GB006'
-  catch = Catchment(name=name, ldebug=True)
-  print(catch.station)
-  assert catch.gauge == None
-  
-  gauge = catch.getGaugeSation(lcheck=True)
-  print(gauge)
-  assert gauge is None
-  
-  print()
-  exit()
-  
 #   from projects.WSC_basins import basin_list, basins, BasinSet
   # N.B.: importing BasinInfo through WSC_basins is necessary, otherwise some isinstance() calls fail
   GRW_stations = {'Grand River':['Brantford','Marsville'], 'Conestogo River':['Glen Allan'],
@@ -708,35 +681,77 @@ if __name__ == '__main__':
                                  rivers=['Payne River', ], stations={'Payne River':['Berwick',],}, subbasins=['WholePRW',]),
                     )
 
+
+#   mode = 'catchment'
+  mode = 'gauge'
+#   mode = 'basin'
+
 #   basin_name = 'PRW'; station = 'Payne River_Berwick'
 #   basin_name = 'SSR'; station = 'St Louis'
   basin_name = 'GRW'; station = 'Grand River_Brantford'
-
-  # load a random station
-  stnds = loadGageStation(basin=basin_name, basin_list=basin_list, station=station,
-                          scalefactors=1e-4, lkgs=True)
-  print((stnds.discharge.plot))
   
-  # verify basin info
-  basin_set = basin_list[basin_name]
-  print(basin_set.long_name)
-  print(basin_set.stations)
-  
-  # load basins
-  basin = basin_list[basin_name]
-  print(basin.long_name)
-  print(basin)
-  assert basin.name == basin_name, basin.name
-  
-  # load station data
-  station = basin.getMainGage(aggregation=None, lkgs=False)
-  print()
-  print(station)
-  print()
-  assert station.atts.ID == loadGageStation(basin=basin_name, basin_list=basin_list).atts.ID
-  print(station.discharge.climMean()[:])
-  
-  # print basins
-  print()
-  for bsn in basin_list.keys():
-    print(bsn)
+  if mode == 'catchment':
+    
+      # test new Catchment class
+      name = '02GB001'
+      catch = Catchment(name=name, ldebug=True)
+      print(catch.station)
+      assert catch.gauge == None
+      
+      gauge = catch.getGaugeSation(lcheck=True)
+      assert isinstance(gauge,GageStation)
+      print(catch.metadata)
+      assert catch.metadata['ID'] == name
+      
+      gauge_ds = catch.getGaugeDataset(lkgs=False)
+      print(gauge_ds)
+      print(gauge_ds.discharge.mean())
+    
+      name = '02GB006'
+      catch = Catchment(name=name, ldebug=True)
+      print(catch.station)
+      assert catch.gauge == None
+      
+      gauge = catch.getGaugeSation(lcheck=True)
+      print(gauge)
+      assert gauge is None
+      
+  elif mode == 'gauge':
+    
+      # load a random station
+#       stnds = loadGageStation(basin=basin_name, basin_list=basin_list, station=station,
+#                               scalefactors=1e-4, lkgs=True)
+      stnds = loadWSC_StnTS(name=dataset_name, title=None, station=station, basin=basin_name, 
+                            varlist=None, varatts=None, folder=None, 
+                            period=None, years=None, filetype='monthly', 
+                            basin_list=basin_list, slices=None, lkgs=True, scalefactors=1e-4)
+      print((stnds))
+      
+      print()
+      print((stnds.discharge.plot))
+      
+  elif mode == 'basin':
+    
+      # verify basin info
+      basin_set = basin_list[basin_name]
+      print(basin_set.long_name)
+      print(basin_set.stations)
+      
+      # load basins
+      basin = basin_list[basin_name]
+      print(basin.long_name)
+      print(basin)
+      assert basin.name == basin_name, basin.name
+      
+      # load station data
+      station = basin.getMainGage(aggregation=None, lkgs=False)
+      print()
+      print(station)
+      print()
+      assert station.atts.ID == loadGageStation(basin=basin_name, basin_list=basin_list).atts.ID
+      print(station.discharge.climMean()[:])
+      
+      # print basins
+      print()
+      for bsn in basin_list.keys():
+        print(bsn)
