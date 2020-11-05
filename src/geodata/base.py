@@ -558,7 +558,7 @@ class Variable(object):
       string = "{0:s} '{1:s}' [{2:s}]   {3:s}\n".format(self.__class__.__name__,self.name,self.units,str(self.__class__))
       for ax in self.axes: string += '  {0:s}\n'.format(ax.prettyPrint(short=True))
       string += 'Attributes: {0:s}\n'.format(str(self.atts))
-      string += 'Plot Attributes: {0:s}'.format(str(self.plot))
+      string += 'Plot Attributes: {0:s}'.format(str(self.plot.as_dict()))
     return string
   
   def tabulate(self, row=None, column=None, header=None, labels=None, cell_str='{}', cell_axis=None,

@@ -13,23 +13,62 @@ from utils.constants import cp, g0
 ## dictionary of plot attributes for some common variables
 
 # a class of plot attributes based on named tuples
-class PlotAtts(namedtuple('PlotAtts', ['name','title','units','scale', 'preserve','scalefactor','offset'], rename=False)):
-  # define some sensible default values
-  def __new__(cls, name        = 'unknown', 
-                   title       = 'unknown variable', 
-                   units       = 'n/a', 
-                   scale       = 'linear', 
-                   preserve    = 'value', 
-                   scalefactor = 1., 
-                   offset      = 0.):
-    # create new instance with default values
-    return super(PlotAtts,cls).__new__(cls,name=name,title=title,units=units,scale=scale,
-                                       scalefactor=float(scalefactor),offset=float(offset),
-                                       preserve=preserve)
-  # also provide wrapper to _replace to present a similar interface as dict and AttrDict
-  def copy(self, **kwargs):
-    ''' create a copy of the namedtuple (new instance); fields specified as kwargs will be replaced '''
-    return self._replace(**kwargs)
+# class PlotAtts(namedtuple('PlotAtts', ['name','title','units','scale', 'preserve','scalefactor','offset'], rename=False)):
+#   # define some sensible default values
+#   def __new__(cls, name        = 'unknown', 
+#                    title       = 'unknown variable', 
+#                    units       = 'n/a', 
+#                    scale       = 'linear', 
+#                    preserve    = 'value', 
+#                    scalefactor = 1., 
+#                    offset      = 0.):
+#     # create new instance with default values
+#     return super(PlotAtts,cls).__new__(cls,name=name,title=title,units=units,scale=scale,
+#                                        scalefactor=float(scalefactor),offset=float(offset),
+#                                        preserve=preserve)
+#   # also provide wrapper to _replace to present a similar interface as dict and AttrDict
+#   def copy(self, **kwargs):
+#     ''' create a copy of the namedtuple (new instance); fields specified as kwargs will be replaced '''
+#     return self._replace(**kwargs)
+
+# a class of plot attributes *not* based on named tuples
+class PlotAtts(object):
+    ''' A new implementation of PlotAtts that is not immutable, i.e. not a namedtuple '''
+    
+    def __init__(self, name        = 'unknown', 
+                       title       = 'unknown variable', 
+                       units       = 'n/a', 
+                       scale       = 'linear', 
+                       preserve    = 'value', 
+                       scalefactor = 1., 
+                       offset      = 0.):
+        ''' assign kwargs to values '''
+        self.name        = name       
+        self.title       = title      
+        self.units       = units      
+        self.scale       = scale      
+        self.preserve    = preserve   
+        self.scalefactor = scalefactor
+        self.offset      = offset
+        
+    def as_dict(self,):
+        ''' return a dictionary with the attribute values '''
+        value_dict = dict(name        = self.name,     
+                          title       = self.title,     
+                          units       = self.units,     
+                          scale       = self.scale,  
+                          preserve    = self.preserve,
+                          scalefactor = self.scalefactor,
+                          offset      = self.offset,)
+        return value_dict
+
+    def copy(self, **kwargs):
+        ''' mainly for backwards compatibility '''
+        value_dict = self.as_dict()
+        value_dict.update(**kwargs)
+        # return new instance with updated values
+        return PlotAtts(**value_dict)
+        
       
 precip_units = r'$mm/day$' # equivalent to '$kg m^{-2} day^{-1}$'
 
