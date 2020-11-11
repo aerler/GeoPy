@@ -340,8 +340,8 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, bias_co
         if lgeoref: xds = checkGeoReference(xds, geoargs=geoargs, grid=grid)
     # add some labels... and return dataset
     xds.attrs['name'] = 'SnoDAS'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries'
-    if 'bias_correction' not in xds.attrs: xds.attrs['bias_correction'] = bias_correction
-    if 'resampling' not in xds.attrs: xds.attrs['resampling'] = resampling 
+    if bias_correction is not None and 'bias_correction' not in xds.attrs: xds.attrs['bias_correction'] = bias_correction
+    if resampling is not None and 'resampling' not in xds.attrs: xds.attrs['resampling'] = resampling 
     return xds
 
 

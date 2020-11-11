@@ -124,8 +124,8 @@ def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resoluti
                      filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
                      geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
     xds.attrs['name'] = 'NRCan'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries'
-    if 'resolution' not in xds.attrs: xds.attrs['resolution'] = resolution
-    if 'resampling' not in xds.attrs: xds.attrs['resampling'] = resampling 
+    if resolution is not None and 'resolution' not in xds.attrs: xds.attrs['resolution'] = resolution
+    if resampling is not None and 'resampling' not in xds.attrs: xds.attrs['resampling'] = resampling 
     return xds
 
 
@@ -719,7 +719,8 @@ if __name__ == '__main__':
 #         varlist = ['pcp',]
 #         varlist = day12_vardefs.keys()
 #         varlist = ['pcp', 'maxt', 'mint'] # order of importance...
-        varlist = ['pcp', 'maxt', 'mint', 'pcp_adj'] # order of importance...
+#         varlist = ['pcp', 'maxt', 'mint', 'pcp_adj'] # order of importance...
+        varlist = ['maxt', 'mint'] # recalculate
         vardefs = son60_vardefs
         grid_res = 'SON60'
         griddef = grid_def[grid_res]
@@ -728,16 +729,14 @@ if __name__ == '__main__':
 #         start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
 #         start_date = '2000-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
         start_date = '1997-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
+#         start_date = '2016-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
         raster_folder = root_folder + grid_res+'_Daily/'
         def raster_path_func(datetime, varname, **varatts):
             ''' determine path to appropriate raster for given datetime and variable'''
             day = datetime.dayofyear
             if not datetime.is_leap_year and day >= 60: day += 1
             altname = varatts.get('alt_name',varname)
-            if varname in ('mint','maxt') and datetime.year in (2016,2017):
-                path = '{VAR:s}/{YEAR:04d}/{ALT:s}/{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, ALT=altname, DAY=day)
-            else:
-                path = '{VAR:s}/{YEAR:04d}/{ALT:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, ALT=altname, DAY=day)
+            path = '{VAR:s}/{YEAR:04d}/{ALT:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, ALT=altname, DAY=day)
             return path
         # NetCDF definitions
         ds_atts = dict(start_date=start_date, end_date=end_date, sampling=sampling)

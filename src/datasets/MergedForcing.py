@@ -410,9 +410,9 @@ if __name__ == '__main__':
 
   work_loads = []
 #   work_loads += ['load_Point_Climatology']
-  work_loads += ['load_Point_Timeseries']  
+#   work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
-#   work_loads += ['compute_derived']
+  work_loads += ['compute_derived']
 #   work_loads += ['load_Daily']
 #   work_loads += ['monthly_mean'          ]
 #   work_loads += ['load_TimeSeries'      ]
@@ -644,23 +644,24 @@ if __name__ == '__main__':
 #         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
 #         derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
-        derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
-#         derived_varlist = ['pet_pts','pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stns = ['UTM','Elora'] # PET approximations with radiation
+#         derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
+        derived_varlist = ['pet_pts','pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stns = ['UTM','Elora'] # PET approximations with radiation
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
 #         grid = 'son2'; resolution = 'CA12'
-#         grid = None; resolution = 'SON60'
-        grid = 'son2'; resolution = 'SON60'
+        grid = None; resolution = 'SON60'
+#         grid = 'son2'; resolution = 'SON60'
         
         
         # optional slicing (time slicing completed below)
-        start_date = None; end_date = None # auto-detect available data
-#         start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
+#         start_date = None; end_date = None # auto-detect available data
+        start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
 #         start_date = '2011-01-01'; end_date = '2011-04-01'
 #         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
+#         start_date = '1997-01-01'; end_date = '2018-01-01'
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
@@ -759,7 +760,7 @@ if __name__ == '__main__':
                 default_varatts = varatts[varname]; ref_var = dataset['T2']
                 # load climatological temperature from NRCan
                 cds = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12', 
-                                        grid=grid, lxarray=True, lmonthly=False, lgeoref=False)
+                                        grid=grid, lxarray=True, lgeoref=False)
                 clim_chunks = {dim:cnk for dim,cnk in zip(ref_var.dims,ref_var.encoding['chunksizes']) if dim in (ref_var.xlon,ref_var.ylat)}
                 dataset['climT2'] = cds['T2'].chunk(chunks=clim_chunks).rename(time='month') # easier not to chunk time dim, since it is small
                 # process timeseries
@@ -821,6 +822,7 @@ if __name__ == '__main__':
             nc_filepath = nc_folder + nc_filename
             print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
             # write to NetCDF
+            print(dataset.attrs)
             var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype) # should be float
             task = nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                           encoding={varname:var_enc,}, compute=False)
