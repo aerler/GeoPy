@@ -208,6 +208,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     ## load datasets
     ds_list = []
     global_ds_atts_dict = dict()
+    #print(dataset_name)
     for dataset,varlist in dataset_varlists.items():
         if ldebug: print("Loading", dataset, '\n', varlist, '\n')
         # prepare kwargs
@@ -266,6 +267,7 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
     file_args = {key:kwargs.pop(key,None) for key in ('resampling', 'resolution', 'bias_correction')}
     folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, mode=mode, period=period, 
                                         shape=shape, station=station, lcreateFolder=False, **file_args)
+    #print(folder,filename)
     # remove some common arguments that have no meaning
     if name is None: name = dataset_name
     for key in ('resolution','bias_correction'):
@@ -422,13 +424,14 @@ if __name__ == '__main__':
   # some settings
 #   resolution = 'CA12'
   resolution = 'SON60'  
-#   grid = None
+  grid = None
 #   grid = 'hd1' # small Quebec grid
-  grid = 'son2' # high-res Southern Ontario
+#   grid = 'son2' # high-res Southern Ontario
 #   grid = 'on1'
   pntset = 'sonshp'
  
   ts_name = 'time_stamp'
+  process_dataset = dataset_name # we can't overwrite dataset_name without causing errors...
   
  
   # loop over modes 
@@ -467,9 +470,11 @@ if __name__ == '__main__':
        
         lxarray = False
         varname = 'T2'
+#         process_dataset = 'NRCan'; period = (1997,2018); kwargs = dict()
         period = (2011,2018); kwargs = dict()
 #         period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname]) # load regular NRCan normals
-        xds = loadMergedForcing(grid=grid, lxarray=lxarray, period=period, **kwargs)
+        xds = loadMergedForcing(grid=grid, lxarray=lxarray, period=period, 
+                                dataset_name=process_dataset, resolution=resolution, **kwargs)
         print(xds)
         print('')
         xv = xds[varname]
@@ -481,13 +486,16 @@ if __name__ == '__main__':
   
         # optional slicing (time slicing completed below)
 #         start_date = '2011-01'; end_date = '2011-12'; varlist = None
-        start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
-  
+#         start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
+        start_date = None; end_date = None; varlist = None
+#         varlist = ['T2','time_stamp']
+        process_dataset = 'NRCan'; resolution = 'SON60'
+        
         # start operation
         start = time.time()
             
         # load variables object (not data!)
-        xds   = loadMergedForcing_TS(varlist=varlist, grid=grid, lxarray=True) # need Dask!
+        xds   = loadMergedForcing_TS(varlist=varlist, grid=grid, dataset_name=process_dataset, resolution=resolution, lxarray=True) # need Dask!
         xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
         print(xds)
         
@@ -500,7 +508,7 @@ if __name__ == '__main__':
         print(prdstr)            
         
         # save resampled dataset
-        folder, filename = getFolderFileName(dataset=dataset_name, grid=grid, period=prdstr)
+        folder, filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='clim')
         # write to NetCDF
         var_enc = dict(zlib=True, complevel=1, _FillValue=-9999)
         encoding = {varname:var_enc for varname in cds.data_vars.keys()}
@@ -521,8 +529,8 @@ if __name__ == '__main__':
     elif mode == 'load_TimeSeries':
        
         lxarray = True
-        varname = 'pet_th'
-        xds = loadMergedForcing_TS(varlist=None, grid=grid, lxarray=lxarray)
+        varname = 'T2'
+        xds = loadMergedForcing_TS(varlist=None, dataset_name=process_dataset, resolution=resolution, grid=grid, lxarray=lxarray)
         print(xds)
         print('')
         xv = xds[varname]
@@ -537,9 +545,20 @@ if __name__ == '__main__':
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
 #         time_slice = ('2011-01-01','2011-12-31') # inclusive
         time_slice = None
-        varlist = dataset_varlist
-        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True,
-                                      resolution=resolution, lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
+        varlist = None
+#         varlist = dataset_varlist        
+#         varlist = ['T2']
+        
+        # process just NRCan dataset
+        varlist = {'NRCan':None, 'const':None}
+        new_dataset = 'NRCan'; resolution = 'SON60'
+        
+#         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True,
+#                                       resolution=resolution, lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
+        print(varlist)
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=None, 
+                                      bias_correction='rfbc', resolution=resolution,
+                                      time_slice=time_slice, lautoChunk=True, lskip=True)
         print(xds)
         print('')
         
@@ -553,7 +572,8 @@ if __name__ == '__main__':
         print('')
         
         # define destination file
-        nc_folder, nc_filename = getFolderFileName(dataset=dataset_name, grid=grid, bias_correction=None, mode='monthly')
+        nc_folder, nc_filename = getFolderFileName(dataset=new_dataset, grid=grid, resolution=resolution, 
+                                                   bias_correction=None, mode='monthly')
         nc_filepath = nc_folder + nc_filename
         print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
         # write to NetCDF
@@ -578,11 +598,12 @@ if __name__ == '__main__':
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
 #         varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
-#         varlist = {'NRCan':None,} # 'const':['lat2D']}
+        varlist = {'NRCan':None, 'const':None}
 #         varlist = dataset_varlist
+#         varlist = {dataset:None for dataset in ['NRCan',dataset_name, 'const']}
 #         varlist = default_varlist
 #         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
-        varlist = {'NRCan':['Tmin','Tmax'], 'const':['lat2D']}
+#         varlist = {'NRCan':['Tmin','Tmax'], 'const':['lat2D']}
         dataset_args = None
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
@@ -645,13 +666,14 @@ if __name__ == '__main__':
 #         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
 #         derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
 #         derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
-        derived_varlist = ['pet_pts','pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stns = ['UTM','Elora'] # PET approximations with radiation
+#         derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
-#         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
+        derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
+        bias_correction = 'rfbc'
 #         grid = 'son2'; resolution = 'CA12'
-        grid = None; resolution = 'SON60'
-#         grid = 'son2'; resolution = 'SON60'
+#         grid = None; resolution = 'SON60'
+        grid = 'son2'; resolution = 'SON60'; load_chunks = dict(time=8, x=59, y=59)
         
         
         # optional slicing (time slicing completed below)
@@ -661,12 +683,12 @@ if __name__ == '__main__':
 #         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
-#         start_date = '1997-01-01'; end_date = '2018-01-01'
+#         start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
         time_slice = (start_date,end_date) # slice time
-        dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction='rfbc', 
+        dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction=bias_correction, 
                                           resampling=None, time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
 #         dataset = dataset.unify_chunks()
         
@@ -714,6 +736,9 @@ if __name__ == '__main__':
                 else: 
                     radvar = 'netrad'; lnetlw = False # use net radiation timeseries
                 stn_ens = [loadClimStn_Daily(station=clim_stn, time_slice=time_slice, lload=True, lxarray=True) for clim_stn in clim_stns]
+                # align time coords with 3D dataset
+                stn_ens = xr.align(dataset, *stn_ens, join='left', copy=False,)[1:] # first is just the reference 
+                # N.B.: stations were already clipped to time_slice, so dataset should never be extended (this just pads the station data)
                 # transfer 1D radiation timeseries to 3D dataset
                 dataset.attrs['zs'] = np.mean([ds.attrs['zs'] for ds in stn_ens]) # also need approximate elevation - station elevation if fine...
                 rad_data = np.nanmean(np.stack([ds[radvar].values for ds in stn_ens], axis=1), axis=1)
@@ -759,8 +784,12 @@ if __name__ == '__main__':
             elif varname == 'pet_th':
                 default_varatts = varatts[varname]; ref_var = dataset['T2']
                 # load climatological temperature from NRCan
-                cds = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12', 
-                                        grid=grid, lxarray=True, lgeoref=False)
+                if resolution == 'CA12':
+                    cds = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12', 
+                                            grid=grid, lxarray=True, lgeoref=False)
+                elif resolution == 'SON60':
+                    cds = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1997,2018), resolution='SON60', 
+                                            grid=grid, lxarray=True, lgeoref=False)
                 clim_chunks = {dim:cnk for dim,cnk in zip(ref_var.dims,ref_var.encoding['chunksizes']) if dim in (ref_var.xlon,ref_var.ylat)}
                 dataset['climT2'] = cds['T2'].chunk(chunks=clim_chunks).rename(time='month') # easier not to chunk time dim, since it is small
                 # process timeseries
