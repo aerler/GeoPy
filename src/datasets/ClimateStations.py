@@ -11,23 +11,19 @@ A module to load data from various station datasets as time series and convert t
 # external imports
 import datetime as dt
 import pandas as pd
-import os
 import os.path as osp
-from warnings import warn
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
-from collections import namedtuple
-import inspect
 # internal imports
-from datasets.common import getRootFolder, grid_folder
+from datasets.common import getRootFolder
 from geodata.netcdf import DatasetNetCDF
 from processing.newvars import e_sat, computeNetRadiation, computePotEvapPM, toa_rad, clearsky_rad,\
   net_longwave_radiation, computePotEvapHog, computePotEvapHar, computePotEvapTh,\
   computePotEvapPT
 # for georeferencing
-from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
-from geospatial.xarray_tools import addGeoReference, loadXArray, updateVariableAttrs, computeNormals
+from geospatial.netcdf_tools import addTimeStamps
+from geospatial.xarray_tools import loadXArray, updateVariableAttrs, computeNormals
 
 ## Meta-vardata
 
@@ -132,6 +128,7 @@ class StationMeta(object):
         self.varatts = varatts if varatts else dict()
         self.minmax = minmax if minmax else dict()
         self.sampling = sampling
+
       
 # Ontario stations
 ontario_station_list = dict()
@@ -233,6 +230,40 @@ def getFolderFileName(station=None, region='Ontario', period=None, mode='daily')
     filename = "{:s}_{:s}.nc".format(station,mode_str).lower()
     # return
     return folder,filename
+
+
+def _createStationSample(name=None, station_list=None):
+    ''' create an empty sample dataset from a list of stations '''
+    # select station list
+    n = len(station_list)
+    # create coordinate/meta data arrays
+    stn_names = []; stn_titles = []
+    stn_lat = np.empty((n,), dtype='float64'); stn_lon = np.empty((n,), dtype='float64'); stn_zs = np.empty((n,), dtype='float64')
+    i = 0 # iterate over station list and fill arrays
+    for key,meta in station_list.items():
+        stn_names.append(key); stn_titles.append(meta.title)
+        stn_lat[i] = meta.lat; stn_lon[i] = meta.lon; stn_zs[i] = meta.zs
+        i += 1
+    # creat dataset
+    from geodata.base import Axis, Variable, Dataset
+    ds = Dataset(name=name, title=name+' Stations')
+    stnax =  Axis(name='station', coord=np.arange(1,n+1), units='#')
+    ds += Variable(name='station_name', data=np.array(stn_names), units='', axes=(stnax,))
+    ds += Variable(name='station_title', data=np.array(stn_titles), units='', axes=(stnax,))
+    ds += Variable(name='stn_lat', data=np.array(stn_lat), units='deg N', axes=(stnax,))
+    ds += Variable(name='stn_lon', data=np.array(stn_lon), units='deg E', axes=(stnax,))
+    ds += Variable(name='stn_zs', data=np.array(stn_zs), units='m', axes=(stnax,))
+    # return template dataset
+    return ds
+  
+def loadStationSample(name=None, filetype=None):
+    ''' load an empty sample dataset, based in meta data '''
+    # select station list
+    if filetype.lower() == 'ontario':
+        station_list = ontario_station_list
+    ds = _createStationSample(name=filetype if name is None else name, station_list=station_list)
+    # return template dataset
+    return ds
 
 
 ## functions to load station data from source files

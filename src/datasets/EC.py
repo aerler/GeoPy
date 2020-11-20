@@ -14,7 +14,6 @@ from copy import deepcopy
 import codecs, calendar, functools
 from warnings import warn
 # internal imports
-from datasets.CRU import loadCRU_StnTS
 from datasets.common import days_per_month, getRootFolder, selectElements
 from datasets.common import CRU_vars, stn_params, nullNaN
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError, AxisError
@@ -656,8 +655,13 @@ class StationRecords(object):
 def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, 
               filelist=None, folder=None, **kwargs): 
   ''' Load a monthly time-series of pre-processed EC station data. '''
-  if filetype is None: raise ArgumentError("A 'filetype' needs to be specified ('temp' or 'precip').")
-  elif not filetype in ('temp','precip'): raise ArgumentError
+  if filetype is None: 
+      raise ArgumentError("A 'filetype' needs to be specified ('[ec]temp' or '[ec]precip').")
+  else:
+    if filetype.startswith('ec'):
+        filetype = filetype[2:] # tolerate ec* names
+    if not filetype in ('temp','precip'): 
+        raise ArgumentError(filetype)
   name = name or 'EC' # 'ec{:s}'.format(filetype) # prepend ec to the filetype
   if prov is not None and not isinstance(prov,str): raise TypeError
   if folder is None: folder = avgfolder
@@ -673,18 +677,12 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None,
 
 # wrapper
 def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, lloadCRU=False, **kwargs):
-  ''' Load a monthly time-series of pre-processed EC station data. '''
-  if station is None: raise ArgumentError("A 'filetype' needs to be specified ('ectemp' or 'ecprecip').")
-  elif station in ('ectemp','ecprecip'):
-    name = name or 'EC'  
-    station = station[2:] # internal convention
-  else: raise ArgumentError
-  
+  ''' Load a monthly time-series of pre-processed EC station data. '''  
   if varlist is not None: 
     if isinstance(varlist,str): varlist = [varlist]
     varlist = list(set(varlist).union(stn_params)) 
   # load station data
-  #print varlist  
+  #print varlist  w
   dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, 
                       filelist=None, folder=None, **kwargs) # just an alias
   # make sure we have a time-dependent variable
@@ -700,6 +698,7 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
     crulist = [var for var in varlist if ( var not in dataset and var in CRU_vars )]
     #print crulist
     if len(crulist) > 0:
+      from datasets.CRU import loadCRU_StnTS
       cru = loadCRU_StnTS(station='ec'+station, varlist=crulist).load() # need to load for slicing
       if cru.hasAxis('time'): # skip, if no time-dependent variable
         #print dataset
@@ -878,6 +877,7 @@ loadTimeSeries = None # time-series data
 loadClimatology = None # pre-processed, standardized climatology
 loadStationTimeSeries = loadEC_TS # time-series data
 loadStationClimatology = loadEC # pre-processed, standardized climatology
+loadStationSample = loadEC_TS # to present meta data for station extraction
 
 if __name__ == '__main__':
 

@@ -202,9 +202,9 @@ if __name__ == '__main__':
     stations = config['stations']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 4 ; ldebug = False # for quick computations
-    modes = ('time-series',) # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
+    NP = 2 ; ldebug = False # for quick computations
+    modes = ('climatology','time-series')
+#     modes = ('climatology',)
     loverwrite = False
     varlist = None
     periods = []
@@ -212,7 +212,7 @@ if __name__ == '__main__':
 #     periods += [3]
 #     periods += [5]
 #     periods += [10]
-#     periods += [15]
+    periods += [15]
     grid = None
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
@@ -223,7 +223,7 @@ if __name__ == '__main__':
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
-#     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['05']}
 #     datasets += ['CRU']
 #     datasets += ['Unity']    
     # CESM experiments (short or long name) 
@@ -237,28 +237,32 @@ if __name__ == '__main__':
     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['erai-wc2']
-    WRF_experiments += ['max-3km', 'max-3km-2100', 'erai-3km']
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
 #     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
-#     WRF_experiments += ['ctrl-1','ctrl-2050','ctrl-2100',]
+#     WRF_experiments += ['ctrl-1','ctrl-2050','ctrl-2100',]    
+#     WRF_experiments += ['max-ctrl',]
     WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
     WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
     WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
     WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]        
+    WRF_experiments += ['max-3km', 'max-3km-2100', 'erai-3km']
     # other WRF parameters 
-    domains = None # domains to be processed
-    WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','plev3d','aux') # filetypes to be processed
-#     WRF_filetypes = ('hydro',)
+    domains = 2 # domains to be processed
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','plev3d','aux') # filetypes to be processed
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm','aux',)
+#     WRF_filetypes = ('aux',)
+    WRF_filetypes = ('mybc2',); grid = 'arb2' # for COSIA
 #     WRF_filetypes = ('const',); periods = None
 #     grid = 'grw2'
-    # station datasets to match    
-    stations = dict(EC=('temp','precip')) # currently there is only one type: the EC weather stations
+    # station datasets to match
+    stations = dict(client_data=('cosia',))
+#     stations = dict(EC=('ectemp','ecprecip')) # currently there is only one type: the EC weather stations
   
   
   ## process arguments    
@@ -305,10 +309,15 @@ if __name__ == '__main__':
       for datatype in datatypes:
         
         # assemble function to load station data (with arguments)
-        station_module = import_module('datasets.{0:s}'.format(stntype)) # load station data module
+        try: station_module = import_module('datasets.{0:s}'.format(stntype)) # load station data module
+        except ImportError:
+            # alternatively try to import from projects or subpackage therein
+            try: station_module = import_module('projects.{0:s}'.format(stntype)) # load station data module
+            except ImportError:
+                station_module = import_module('projects.{0:s}.{1:s}'.format(WRF_project,stntype)) # load station data module            
         # load station dataset into memory, so that it can be shared by all workers
-        stnname = stntype.lower()+datatype.lower() 
-        stnfct = functools.partial(station_module.loadStationTimeSeries, name=stnname, filetype=datatype)
+        stnname = datatype.lower() 
+        stnfct = functools.partial(station_module.loadStationSample, name=stnname, filetype=datatype)
                
         # observational datasets (grid depends on dataset!)
         for dataset in datasets:
