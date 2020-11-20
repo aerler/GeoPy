@@ -152,6 +152,7 @@ class Srfc(FileType):
 #                      SWDOWN       = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
                      OLR          = dict(name='LWUPT', units='W/m^2'), # Outgoing Longwave Radiation
                      GLW          = dict(name='LWDNB', units='W/m^2'), # Downwelling Longwave Radiation at Surface
+                     SWDOWN       = dict(name='SWDNB', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
                      SWD          = dict(name='SWDNB', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
                      SWNORM       = dict(name='SWN', units='W/m^2'), # Downwelling Normal Shortwave Radiation at Surface
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
@@ -846,7 +847,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     # load constants
     if llconst:              
       constfile = fileclasses['const']
-      constlist = list(set().intersection(varlist,constfile.vars) if varlist is not None else constfile.vars)
+      constlist = constfile.vars if varlist is None else varlist
       catts = fileclasses['axes'].atts.copy()
       catts.update(constfile.atts) # use axes atts as basis and override with filetype-specific atts
       filename = constfile.tsfile.format(domain,gridstr)  
@@ -1350,10 +1351,10 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_daily'
+#   mode = 'test_daily'
 #   mode = 'test_xarray'  
 #   mode = 'test_climatology'
-#   mode = 'test_timeseries'
+  mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
@@ -1453,9 +1454,9 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-#     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'], exps=WRF_exps)
-    dataset = loadWRF_TS(experiment='g-ctrl', domains=None, varlist=None, lconst=True,
-                         filetypes=['hydro'], exps=WRF_exps)
+    dataset = loadWRF_TS(experiment='max-ctrl', domains=2, grid=None, filetypes=['srfc'], exps=WRF_exps, lconst=True)
+#     dataset = loadWRF_TS(experiment='g-ctrl', domains=None, varlist=None, lconst=True,
+#                          filetypes=['hydro'], exps=WRF_exps)
 #     dataset = loadWRF_All(name='new-ctrl-2050', folder='/data/WRF/wrfavg/', domains=2, filetypes=['hydro'], 
 #                           lctrT=True, mode='time-series', exps=WRF_exps)
 #     for dataset in datasets:

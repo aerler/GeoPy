@@ -146,7 +146,7 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, lnetl
   else:
     if not lA: A = 0.23 # reference Albedo for grass
     elif lA and 'A' in dataset: A = dataset['A'].data if lxarray else dataset['A'][:]
-    else: 
+    else:
         raise VariableError("Actual Albedo is not available for radiation calculation.")
     if 'SWDNB' in dataset: 
         DNSW = dataset['SWDNB'].data if lxarray else dataset['SWDNB'][:]; refvar = dataset['SWDNB']
@@ -190,10 +190,13 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, lnetl
         data = radiation_black(A,DNSW,DNLW,em,TSmin,TSmax) # downward total net radiation
   # cast as Variable
   if asVar:
+      atts = dict(name=name, units='W/m^2', long_name='Net Surface Radiation (downwelling)')
+      if lnetlw: atts['note'] = 'based on direct solar radiation and estimated net LW radiation'
+      atts['lrad'] = int(lrad); atts['lA'] = int(lA); atts['lem'] = int(lem)
       if lxarray:
-          var = xr.DataArray(data=data, name=name, attrs=dict(name=name, units='W/m^2'), coords=refvar.coords)
+          var = xr.DataArray(data=data, name=name, attrs=atts, coords=refvar.coords)
       else:
-          var = Variable(data=data, name=name, units='W/m^2', axes=refvar.axes)
+          var = Variable(data=data, axes=refvar.axes, atts=atts)
   else: var = data
   # return new variable
   return var
@@ -318,15 +321,19 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem
         atts = dict(name='petwnd', units='kg/m^2/s', long_name='Wind Term of PET')
         wnd = xr.DataArray(coords=refvar.coords, data=wnd, name=atts['name'], attrs=atts)
     else: 
-        rad = Variable(data=rad, name='petrad', units='kg/m^2/s', axes=dataset[refvar].axes)
-        wnd = Variable(data=wnd, name='petwnd', units='kg/m^2/s', axes=dataset[refvar].axes)
+        rad = Variable(data=rad, name='petrad', units='kg/m^2/s', axes=refvar.axes)
+        wnd = Variable(data=wnd, name='petwnd', units='kg/m^2/s', axes=refvar.axes)
   else:
     pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
-  atts = dict(name='pet', units='kg/m^2/s', long_name='PET (Penman-Monteith)')
   if lnetlw: 
+      atts = dict(name='pet_pms', units='kg/m^2/s', long_name='PET (Penman-Monteith, solar only)')
       atts['note'] = 'based on direct solar radiation and estimated net LW radiation'
-      atts['long_name'] = 'PET (Penman-Monteith, estimated LW)'
+  else:
+      atts = dict(name='pet_pm', units='kg/m^2/s', long_name='PET (Penman-Monteith)')
+  # record options
+  atts['lrad'] = int(lrad); atts['lA'] = int(lA); atts['lem'] = int(lem); atts['lnetlw'] = int(lnetlw) 
+  atts['lgrdflx'] = int(lgrdflx); atts['lpmsl'] = int(lpmsl); atts['lmeans'] = int(lmeans)
   if lxarray:
       pet = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
   else: 
@@ -373,14 +380,18 @@ def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lA=True, lem=
   # compute potential evapotranspiration according to Priestley-Taylor method (1972)
   pet = evaluate('alpha * D * (Rn + G) / ( D + g ) / lw') # Eq. 12, Stannard, 1993, WRR
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
-  atts = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)')
   if lnetlw: 
-      atts['note'] = 'based on direct solar radiation and estimated net LW radiation'
-      atts['long_name'] = 'PET (Priestley-Taylor, estimated LW)'
+      atts = dict(name='pet_pts', units='kg/m^2/s', long_name='PET (Priestley-Taylor, solar only)')
+      atts['note'] = 'based on direct solar radiation and estimated net LW radiation'      
+  else:
+      atts = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)')
+  # record options
+  atts['lrad'] = int(lrad); atts['lA'] = int(lA); atts['lem'] = int(lem); atts['lnetlw'] = int(lnetlw)
+  atts['lgrdflx'] = int(lgrdflx); atts['lpmsl'] = int(lpmsl); atts['lmeans'] = int(lmeans); atts['alpha'] = int(alpha)
   if lxarray:
       var = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
   else:
-      var = Variable(data=pet, axes=dataset[refvar].axes, atts=atts)
+      var = Variable(data=pet, axes=refvar.axes, atts=atts)
   assert 'liqwatflx' not in dataset or var.units == dataset['liqwatflx'].units, var
   assert 'precip' not in dataset or var.units == dataset['precip'].units, var
   # return new variable
@@ -456,10 +467,10 @@ def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, lxarray=False, 
   T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans, lxarray=lxarray)
   # make sure T is in Celsius
   if t_units == 'K':
-      assert lxarray or T.min() > 150, T
+      assert lxarray or T.min() > 100, T
       TC = T - 273.15 # no need to convert min/max since only difference is used
   elif 'C' in t_units:
-      assert lxarray or T.max() < 70, T
+      assert lxarray or T.max() < 100, T
       TC = T
   else:
       raise VariableError("Cannot infer temperature units from unit string",t_units)
@@ -484,11 +495,13 @@ def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, lxarray=False, 
   # create DataArray/Variable
   refvar = dataset['Tmax']
   atts = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)')
+  # record options
+  atts['lq2'] = int(lq2); atts['lmeans'] = int(lmeans)
   if lxarray:
       var = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
   else: 
       if refvar.masked:
-          pet = np.ma.masked_array(pet, mask=refvar.data_array.mask)
+          pet = np.ma.masked_array(pet, mask=Tmax.mask) # Tmax is the data array of refvar
       var = Variable(data=pet, axes=refvar.axes, atts=atts)
   assert 'liqwatflx' not in dataset or var.units == dataset['liqwatflx'].units, var
   assert 'precip' not in dataset or var.units == dataset['precip'].units, var
@@ -610,13 +623,16 @@ def toa_rad(time, lat, lmonth=True, l365=False, time_offset=0, ldeg=True):
     # return solar radiation at ToA
     return Ra
 
-def computeToAradiation(dataset, lat=None, l365=None, time_offset=0, lxarray=False):
+def computeToAradiation(dataset, lat=None, l365=False, time_offset=0, lxarray=False):
     ''' estimate the ToA radiation based on date and latitude '''
     # infer latitude
     lat = _inferLat(dataset, lat=lat, ldeg=True, lunits=False, lxarray=lxarray)
-    # determine date
-    time = dataset['time'].data if lxarray else dataset.time[:]
-    lmonth = not lxarray and ('month' in time.units.lower()) # whether time axis is datetime or month index
+    # determine time axis
+    if lxarray:
+        time = dataset['time'].data; lmonth = False
+    else:
+        time = dataset.time[:]
+        lmonth = 'month' in dataset.time.units.lower() # whether time axis is datetime or month index
     # compute top-of-atmosphere solar radiation
     Ra = toa_rad(time, lat=lat, lmonth=lmonth, ldeg=True, l365=l365, time_offset=time_offset)    
     return Ra
@@ -626,7 +642,7 @@ def clearsky_rad(Ra, zs):
     ''' clear-sky surface solar radiation, based on elevation [m] and ToA solar radiation [W/m^2] '''
     return evaluate('(0.75 + zs*2e-5) * Ra')
 
-def computeClearskyRadiation(dataset, zs=None, lat=None, l365=None, time_offset=0, lxarray=False):
+def computeClearskyRadiation(dataset, zs=None, lat=None, l365=False, time_offset=0, lxarray=False):
     ''' add correction for atmospheric absorption to ToA radiation '''
     # infer elevation
     zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True, lxarray=lxarray) 
@@ -639,25 +655,28 @@ def computeClearskyRadiation(dataset, zs=None, lat=None, l365=None, time_offset=
 
 
 # compute potential evapotranspiration based on Hargreaves method; requires only Tmin/Tmax and ToA radiation (i.e. latitude and date)
-def computePotEvapHar(dataset, lat=None, lmeans=False, l365=None, time_offset=0, lAllen=False, lxarray=False, **kwargs):
+def computePotEvapHar(dataset, lat=None, lmeans=False, l365=False, time_offset=0, lAllen=False, lxarray=False, **kwargs):
     ''' function to compute potetnial evapotranspiration following the Hargreaves method;
         (Hargreaves & Allen, 2003, Eq. 8) '''
     if lxarray: import xarray as xr
     T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans, lxarray=lxarray)
     # make sure T is in Celsius
     if t_units == 'K':
-        assert lxarray or T.min() > 150, T
+        assert lxarray or T.min() > 100, T.min()
         TC = T - 273.15 # no need to convert min/max since only difference is used
     elif 'C' in t_units:
-        assert lxarray or TC.max() < 70, T
+        assert lxarray or TC.max() < 100, T.max()
         TC = T
     else:
         raise VariableError("Cannot infer temperature units from unit string",t_units)
     # infer latitude
     lat = _inferLat(dataset, lat=lat, ldeg=True, lunits=False, lxarray=lxarray)
     # compute top-of-atmosphere solar radiation
-    time = dataset['time'].data if lxarray else dataset.time[:]
-    lmonth = not lxarray and ('month' in time.units.lower()) # whether time axis is datetime or month index
+    if lxarray:
+        time = dataset['time'].data; lmonth = False
+    else:
+        time = dataset.time[:]
+        lmonth = 'month' in dataset.time.units.lower() # whether time axis is datetime or month index
     Ra = toa_rad(time, lat=lat, lmonth=lmonth, ldeg=True, l365=l365, time_offset=time_offset)    
     # compute PET (need to convert Ra from J/m^/s to kg/m^2/s = mm/s and Kelvin to Celsius)    
     if lAllen:
@@ -666,14 +685,16 @@ def computePotEvapHar(dataset, lat=None, lmeans=False, l365=None, time_offset=0,
         pet = evaluate('(0.0023/lw) * Ra * (TC + 17.8) * (Tmax - Tmin)**0.5')
     # create a DataArray/Variable instance
     refvar = dataset['Tmax']
-    author_str = '(Hargreaves & Allen)' if lAllen else '(Hargreaves)'
-    atts = dict(name='pet_har', units='kg/m^2/s', long_name='PET '+author_str)
+    if lAllen: atts = dict(name='pet_haa', units='kg/m^2/s', long_name='PET (Hargreaves & Allen)')
+    else: atts = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargreaves)')
+    # record options
+    atts['l365'] = int(l365); atts['lAllen'] = int(lAllen); atts['time_offset'] = int(time_offset); atts['lmeans'] = int(lmeans)
     if lxarray:
         if pet.size == 0: pet = None
         var = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
     else: 
         if refvar.masked:
-            pet = np.ma.masked_array(pet, mask=refvar.data_array.mask)
+            pet = np.ma.masked_array(pet, mask=Tmax.mask) # Tmax is the data array of refvar
         var = Variable(data=pet, axes=refvar.axes, atts=atts)
     assert 'liqwatflx' not in dataset or var.units == dataset['liqwatflx'].units, var
     assert 'precip' not in dataset or var.units == dataset['precip'].units, var
@@ -775,6 +796,8 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
     # N.B.: we also need to convert from per day to per second!
     # create a DataArray/Variable instance
     atts = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)')
+    # record options
+    atts['l365'] = int(l365); atts['time_offset'] = int(time_offset); atts['p'] = int(p)
     if lxarray:
         if pet.size == 0: pet = None
         var = xr.DataArray(coords=T2.coords, data=pet, name=atts['name'], attrs=atts)
