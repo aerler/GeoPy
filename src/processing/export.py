@@ -113,7 +113,7 @@ class ASCII_raster(FileFormat):
   
   def __init__(self, project=None, folder=None, prefix=None, bc_method=None, **expargs):
     ''' take arguments that have been passed from caller and initialize parameters '''
-    self.project = project; self.folder_pattern = folder; self.prefix_pattern = prefix; self.bc_method = bc_method
+    self.project = project; self.folder_pattern = folder; self.file_pattern = filename; self.bc_method = bc_method
     self.export_arguments = expargs
   
   @property
@@ -126,6 +126,7 @@ class ASCII_raster(FileFormat):
         can be determined (and returned) '''
     # extract variables
     dataset_name = dataargs.dataset_name; domain = dataargs.domain; grid = dataargs.grid
+    station = dataargs.station; shape = dataargs.shape
     if dataargs.period is None: periodstr = None
     elif isinstance(dataargs.period,(tuple,list)):
       periodstr = '{0:02d}'.format(int(dataargs.period[1]-dataargs.period[0]))
@@ -143,11 +144,17 @@ class ASCII_raster(FileFormat):
       lnkprd = mode[:-5] if lnkprdstr is None else '{:s}_{:s}'.format(mode[:-5],lnkprdstr)
     else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))        
     # insert into patterns 
-    metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd, 
-                    RESOLUTION=dataargs.resolution, BIAS=self.bc_method)
+    metadict = dict(PROJECT=self.project, PRJ=self.project, 
+                    GRID=grid, GRD=grid,
+                    SHAPE=shape , SHP=shape,
+                    STATION=station, STN=station,
+                    EXPERIMENT=expname, EXP=expname, 
+                    PERIOD=expprd, PRD=expprd, 
+                    RESOLUTION=dataargs.resolution, RES=dataargs.resolution, 
+                    BIAS=self.bc_method, BC=self.bc_method)
     self.folder = self.folder_pattern.format(**metadict)
     if ldebug: self.folder = self.folder + '/test/' # test in subfolder
-    self.prefix = self.prefix_pattern.format(**metadict) if self.prefix_pattern else None
+    self.filename = self.file_pattern.format(**metadict) if self.file_pattern else None
     # create link with alternate period designation
     self.altprdlnk = None
     if lnkprd is not None and hasattr(os,'symlink'): # Windows does not have symlinks, so this does not work
@@ -203,13 +210,75 @@ class ASCII_raster(FileFormat):
   def exportDataset(self, dataset):
     ''' method to write a Dataset instance to disk in the given format; this will be format specific '''
     # export dataset to raster format
-    filedict = dataset.ASCII_raster(prefix=self.prefix, varlist=None, folder=self.folder, **self.export_arguments)
+    filedict = dataset.ASCII_raster(prefix=self.filename, varlist=None, folder=self.folder, **self.export_arguments)
+    # check first and last
+    if not os.path.exists(list(filedict.values())[0][0]): raise IOError(list(filedict.values())[0][0]) # random check
+    if not os.path.exists(list(filedict.values())[-1][-1]): raise IOError(list(filedict.values())[-1][-1]) # random check
+
+
+class StationCSV(ASCII_raster):
+  ''' A class to handle exports to ASCII CSV tables (only for station/1D data). '''
+  
+  def __init__(self, project=None, folder=None, filename=None, bc_method=None, **expargs):
+    ''' take arguments that have been passed from caller and initialize parameters '''
+    self.project = project; self.folder_pattern = folder; self.name_pattern = filename; self.bc_method = bc_method
+    self.export_arguments = expargs
+  
+  @property
+  def destination(self):
+    ''' access output destination '''
+    return self.filepath
+      
+  def defineDataset(self, dataset=None, mode=None, dataargs=None, lwrite=True, ldebug=False):
+    ''' a method to set external parameters about the Dataset, so that the export destination
+        can be determined (and returned) '''
+    folder = super(StationCSV,self).defineDataset(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, ldebug=ldebug)
+    self.filepath = os.path.join(folder,self.filename)
+    # return full path (single file)
+    return self.filepath
+  
+  def prepareDestination(self, srcage=None, loverwrite=False):
+    ''' create or clear the destination folder, as necessary, and check if source is newer (for skipping) '''
+    ## prepare target dataset (which is mainly just a folder)
+    if not os.path.exists(self.folder): 
+      # create new folder
+      os.makedirs(self.folder)
+      lskip = False # actually do export
+    elif loverwrite:
+      shutil.rmtree(self.folder) # remove old folder and contents
+      os.makedirs(self.folder) # create new folder
+      lskip = False # actually do export
+    else:
+      age = datetime.fromtimestamp(os.path.getmtime(self.folder))
+      # if source file is newer than target folder, recompute, otherwise skip
+      lskip = ( age > srcage ) # skip if newer than source 
+    if not os.path.exists(self.folder): raise IOError(self.folder)
+    ## put in alternative symlink (relative path) for period section
+    if self.altprdlnk:
+      root_folder, link_dest, link_name = self.altprdlnk
+      pwd = os.getcwd(); os.chdir(root_folder)
+      if not os.path.exists(link_name): 
+        os.symlink(link_dest, link_name) # create new symlink
+      if os.path.islink(link_name): 
+        os.remove(link_name) # remove old link before creating new one
+        os.symlink(link_dest, link_name) # create new symlink      
+      elif loverwrite:  
+        shutil.rmtree(link_name) # remove old folder and contents
+        os.symlink(link_dest, link_name) # create new symlink
+      os.chdir(pwd) # return to original directory
+    # return with a decision on skipping
+    return lskip 
+    
+  def exportDataset(self, dataset):
+    ''' method to write a Dataset instance to disk in the given format; this will be format specific '''
+    # export dataset to raster format
+    filedict = dataset.ASCII_raster(prefix=self.filename, varlist=None, folder=self.folder, **self.export_arguments)
     # check first and last
     if not os.path.exists(list(filedict.values())[0][0]): raise IOError(list(filedict.values())[0][0]) # random check
     if not os.path.exists(list(filedict.values())[-1][-1]): raise IOError(list(filedict.values())[-1][-1]) # random check
 
   
-def getFileFormat(fileformat, bc_method=None, **expargs):
+def getFileFormat(fileformat, bc_method=None, expargs=None):
   ''' function that returns an instance of a specific FileFormat child class specified in expformat; 
       other kwargs are passed on to constructor of FileFormat '''
   # decide based on expformat; instantiate object
@@ -217,6 +286,8 @@ def getFileFormat(fileformat, bc_method=None, **expargs):
     return ASCII_raster(bc_method=bc_method, **expargs)
   elif fileformat.lower() in ('netcdf','netcdf4'):
     return NetCDF(bc_method=bc_method, **expargs)
+  elif fileformat.upper() in ('ASCII','CSV'):
+    return StationCSV(bc_method=bc_method, **expargs)
   else:
     raise NotImplementedError(fileformat)
   
@@ -281,7 +352,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
     compute_list = expargs.pop('compute_list', []) # variables to be (re-)computed - by default all
     src_varmap = expargs.pop('src_varmap', dict()) # names of variables in soruce dataset
     # initialize FileFormat class instance
-    fileFormat = getFileFormat(expformat, bc_method=bc_method, **expargs)
+    fileFormat = getFileFormat(expformat, bc_method=bc_method, expargs=expargs)
     # get folder for target dataset and do some checks
     expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
     expfolder = fileFormat.defineDataset(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=True, ldebug=ldebug)
@@ -510,14 +581,14 @@ if __name__ == '__main__':
         export_arguments = config['export_parameters'] # this is actually a larger data structure
     else:
         # settings for testing and debugging
-#         NP = 2; ldebug = False # for quick computations
-        NP = 1 ; ldebug = True # just for tests
-#         modes = ('time-series','climatology')
+        NP = 2; ldebug = False # for quick computations
+#         NP = 1 ; ldebug = True # just for tests
 #         modes = ('annual-mean','climatology', 'time-series')
 #         modes = ('annual-mean','climatology',)
 #         modes = ('annual-mean',)
+        modes = ('time-series','climatology')
 #         modes = ('climatology',)  
-        modes = ('time-series',)  
+#         modes = ('time-series',)  
         loverwrite = True
         exp_list= None
         load_list = []
@@ -616,7 +687,8 @@ if __name__ == '__main__':
 #         domains = None # process all domains
 #         WRF_filetypes = ('hydro',) # available input files
 #         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
-        WRF_filetypes = ('hydro','xtrm','srfc','lsm',) # available input files
+#         WRF_filetypes = ('hydro','xtrm','srfc','lsm',) # available input files
+        WRF_filetypes = ('aux',) # available input files
 #         WRF_filetypes = ('const',) # with radiation files
         ## bias-correction parameter
         bc_method = None; bc_tag = '' # no bias correction
@@ -648,12 +720,15 @@ if __name__ == '__main__':
 #         grids += ['snw1']; project = 'SNW' # south nation watershed
 #         grids += ['son1']; project = 'SON' # southern Ontario watersheds
 #         grids += ['son2']; project = 'SON' # southern Ontario watersheds
+        # station or shape for table extraction
+        station = None; shape = None # regular gridded dataset        
+        station = 'cosia'; project = 'COSIA'
         ## export to ASCII raster
-#         hgs_root = os.getenv('HGS_ROOT', os.getenv('DATA_ROOT', None)+'/HGS/')
+        HGS_ROOT = os.getenv('HGS_ROOT', os.getenv('DATA_ROOT', None)+'/HGS/')
 #         export_arguments = dict(
 #             # NRCan
-# # #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None),bc_tag),
-#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(hgs_root),
+# # #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(HGS_ROOT,bc_tag),
+#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(HGS_ROOT),
 # # #             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
 # # #             compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
 # # #             exp_list= ['liqwatflx',], src_varmap=dict(liqwatflx='liqwatflx_swe'), # varlist for SnoDAS
@@ -669,10 +744,10 @@ if __name__ == '__main__':
 # #             exp_list= ['lat2D','lon2D','zs','pet','liqwatflx','liqwatflx-1','pet-1','liqwatflx-05','pet-05'], # varlist with shifts
 # #             exp_list= ['lat2D','lon2D','zs','pet','liqwatflx'], # short varlist for quick export
 # #             compute_list = ['pet-1','pet-05'], exp_list= ['pet','pet-1','pet-05'], # varlist with shifts
-# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
+# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(HGS_ROOT,bc_tag),
 # #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{PROJECT}/{EXPERIMENT}/{PERIOD}/',
 # #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{{PROJECT}}/{{EXPERIMENT}}/{bc_tag:s}{{PERIOD}}/'.format(bc_tag=bc_tag),
-# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT')),
+# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(HGS_ROOT),
 # #             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
 #             # common
 #             project = project, # project designation  
@@ -680,11 +755,20 @@ if __name__ == '__main__':
 #             format = 'ASCII_raster', # formats to export to
 #             fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
 #             lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
+        ## export to ASCII table/CSV (from 1D station/shape data only)
+        exp_list = []
+        assert station and not shape
+        export_arguments = dict(format = 'CSV', exp_list= exp_list, compute_list=None, 
+                                filename = '{{STN}}_{1:s}_{{PRD}}.csv'.format(bc_tag),
+                                folder = '{0:s}/{{PRJ}}/{{GRD}}/{{EXP}}/{1:s}{{PRD}}/station_data/'.format(HGS_ROOT,bc_tag),
+                                station = station, shape = shape, project = project,
+                                fillValue = 0, noDataValue = -9999, lm3 = False) # see above...
         ## export to NetCDF (aux-file)
         exp_list = []
-        exp_list += ['waterflx','liqwatflx','liqprec','solprec','precip','preccu','precnc','snow','snowh','snwmlt',]
-        exp_list += ['netrad','netrad_bb0','netrad_bb', 'netrad_lw','vapdef','pet_wrf',]
-        exp_list += ['pet_pm','petrad','petwnd', 'pet_pms', 'pet_pt', 'pet_pts', 'pet_har', 'pet_haa', 'pet_hog']
+        exp_list += ['T2','Tmin','Tmax','SWDNB','snow','snowh'] # just for bias-correction
+        exp_list += ['pet_wrf','liqprec','solprec','precip','preccu','precnc','snwmlt',] # just for bias-correction
+        exp_list += ['waterflx','liqwatflx','netrad','netrad_bb0','netrad_bb', 'netrad_lw','vapdef',] # computed vars
+        exp_list += ['pet_pm','petrad','petwnd', 'pet_pms', 'pet_pt', 'pet_pts', 'pet_har', 'pet_haa', 'pet_hog'] # offline PET
 #         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWDNB','LWDNB','zs','lat2D','lon2D',]
 #         exp_list += ['SWDNB','SWUPB',]
 #         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','Q2','evap','waterflx','zs','lat2D','lon2D',]
@@ -701,7 +785,7 @@ if __name__ == '__main__':
             filename = 'AUX'
 #         compute_list = ['waterflx','waterflx-1','liqwatflx','liqwatflx-1','snwmlt-1','pet-1','liqwatflx-05','snwmlt-05','pet-05']
 #         compute_list = ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
-        compute_list = ['waterflx','liqwatflx','precip','pet','netrad','netrad_lw','netrad_bb','netrad_bb0','vapdef'] # variables that should be (re-)computed
+        compute_list = ['precip','waterflx','liqwatflx','netrad','netrad_lw','netrad_bb','netrad_bb0','vapdef'] # variables that should be (re-)computed
         compute_list += ['pet_pm','petrad','petwnd', 'pet_pms', 'pet_pt', 'pet_pts', 'pet_har', 'pet_haa', 'pet_hog'] # PET variables
         export_arguments = dict(format = 'NetCDF',
                                 exp_list= exp_list, compute_list=compute_list, 
@@ -743,6 +827,9 @@ if __name__ == '__main__':
     if export_arguments['format'] == 'ASCII_raster':
       print(('Export Folder: {:s}'.format(export_arguments['folder'])))
       print(('File Prefix: {:s}'.format(export_arguments['prefix'])))
+    elif export_arguments['format'] == 'CSV':
+      print(('Export Folder: {:s}'.format(export_arguments['folder'])))
+      print(('Filename: {:s}'.format(export_arguments['filename'])))
     elif export_arguments['format'].lower() in ('netcdf','netcdf4'):
       pass
     else:
@@ -782,25 +869,28 @@ if __name__ == '__main__':
                 if resolutions is None: dsreses = mod.LTM_grids
                 elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
                 for dsres in dsreses: 
-                  args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list
+                  args.append( (dataset, mode, dict(grid=grid, station=station, shape=shape, varlist=load_list, period=None, 
+                                                    resolution=dsres, unity_grid=unity_grid)) ) # append to list
               # climatologies derived from time-series
               if resolutions is None: dsreses = mod.TS_grids
               elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
               for dsres in dsreses:
                 for period in periodlist:
-                  args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=period, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
+                  args.append( (dataset, mode, dict(grid=grid, station=station, shape=shape, varlist=load_list, period=period, 
+                                                    resolution=dsres, unity_grid=unity_grid)) ) # append to list            
             elif mode == 'time-series': 
               # regrid the entire time-series
               if resolutions is None: dsreses = mod.TS_grids
               elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
               for dsres in dsreses:
-                args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
+                args.append( (dataset, mode, dict(grid=grid, station=station, shape=shape, varlist=load_list, period=None, 
+                                                  resolution=dsres, unity_grid=unity_grid)) ) # append to list            
           
           # CESM datasets
           for experiment in CESM_experiments:
             for period in periodlist:
               # arguments for worker function: dataset and dataargs       
-              args.append( ('CESM', mode, dict(experiment=experiment, filetypes=CESM_filetypes, grid=grid, 
+              args.append( ('CESM', mode, dict(experiment=experiment, filetypes=CESM_filetypes, grid=grid, station=station, shape=shape,
                                                varlist=load_list, period=period, load3D=load3D)) )
           # WRF datasets
           for experiment in WRF_experiments:
@@ -811,7 +901,7 @@ if __name__ == '__main__':
             for domain in tmpdom:
               for period in periodlist:
                 # arguments for worker function: dataset and dataargs       
-                args.append( ('WRF', mode, dict(experiment=experiment, filetypes=WRF_filetypes, grid=grid, 
+                args.append( ('WRF', mode, dict(experiment=experiment, filetypes=WRF_filetypes, grid=grid, station=station, shape=shape, 
                                                 varlist=load_list, domain=domain, period=period)) )
     
     # put bias correction arguments into a single dict

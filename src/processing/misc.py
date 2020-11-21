@@ -184,6 +184,8 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   varlist = dataargs.get('varlist',None)
   resolution = dataargs.get('resolution',None)
   grid = dataargs.get('grid',None) # get grid
+  station = dataargs.get('station',None)
+  shape = dataargs.get('shape',None)
   period = dataargs.get('period',None)
   # determine meta data based on dataset type
   if dataset == 'WRF': 
@@ -213,11 +215,25 @@ def getMetaData(dataset, mode, dataargs, lone=True):
                           periodstr=periodstr, gridstr=gridstr, lclim=lclim, lts=lts)
     # load source data
     if lclim:
-      loadfct = partial(WRF.loadWRF, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
-                        period=period, filetypes=filetypes, varatts=None, lconst=True, ltrimT=False) # still want topography...
+      if station:
+        loadfct = partial(WRF.loadWRF, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
+                          period=period, filetypes=filetypes, varatts=None, ltrimT=False)
+      elif shape:
+        loadfct = partial(WRF.loadWRF, experiment=exp, name=None, domains=domain, grid=grid, shape=shape, varlist=varlist,
+                          period=period, filetypes=filetypes, varatts=None, ltrimT=False)
+      else:
+        loadfct = partial(WRF.loadWRF, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
+                          period=period, filetypes=filetypes, varatts=None, lconst=True, ltrimT=False) # still want topography...
     elif lts:
-      loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
-                        filetypes=filetypes, varatts=None, lconst=True, ltrimT=False) # still want topography...
+      if station:
+        loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
+                        filetypes=filetypes, varatts=None, ltrimT=False)
+      elif station:
+        loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
+                        filetypes=filetypes, varatts=None, ltrimT=False)
+      else:
+        loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
+                          filetypes=filetypes, varatts=None, lconst=True, ltrimT=False) # still want topography...
   elif dataset == 'CESM': 
     import datasets.CESM as CESM
     # CESM datasets
@@ -244,6 +260,9 @@ def getMetaData(dataset, mode, dataargs, lone=True):
                           periodstr=periodstr, gridstr=gridstr, lclim=lclim, lts=lts)
     # load source data 
     load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)
+    
+    if station or shape: raise NotImplementedError()
+    
     if lclim:
       loadfct = partial(CESM.loadCESM, experiment=exp, name=None, grid=grid, period=period, varlist=varlist, 
                         filetypes=filetypes, varatts=None, load3D=load3D, translateVars=None)
@@ -273,6 +292,9 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     # load pre-processed climatology
     kwargs = dict(name=dataset_name, grid=grid, varlist=varlist, resolution=resolution, varatts=None)
     if dataset == 'Unity': kwargs['unity_grid'] = dataargs['unity_grid']
+    
+    if station or shape: raise NotImplementedError()
+    
     if lclim and module.loadClimatology is not None: 
         loadfct = partial(module.loadClimatology, period=period, **kwargs)
     elif lts and module.loadTimeSeries is not None: 
@@ -292,7 +314,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   ## assemble and return meta data
   dataargs = namedTuple(dataset_name=dataset_name, period=period, periodstr=periodstr, avgfolder=avgfolder, 
                         filetypes=filetypes,filetype=filetypes[0], domain=domain, obs_res=obs_res, 
-                        varlist=varlist, grid=grid, gridstr=gridstr, resolution=resolution) 
+                        varlist=varlist, grid=grid, gridstr=gridstr, station=station, shape=shape, resolution=resolution) 
   # return meta data
   return dataargs, loadfct, srcage, datamsgstr    
 

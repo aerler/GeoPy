@@ -205,7 +205,7 @@ if __name__ == '__main__':
     NP = 2 ; ldebug = False # for quick computations
     modes = ('climatology','time-series')
 #     modes = ('climatology',)
-    loverwrite = False
+    loverwrite = True
     varlist = None
     periods = []
 #     periods += [1]
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
     WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
     WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]        
-    WRF_experiments += ['max-3km', 'max-3km-2100', 'erai-3km']
+#     WRF_experiments += ['max-3km', 'max-3km-2100', 'erai-3km']
     # other WRF parameters 
     domains = 2 # domains to be processed
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','plev3d','aux') # filetypes to be processed
