@@ -36,7 +36,19 @@ def containerDepth(container, classes=(tuple,list)):
         # terminate recursion
         counter = 0
     return counter
-          
+
+
+## function to write a timeseries/1D dataset to a CSV file
+def exportCSV(dataset, filepath, exp_list=None, ldebug=False, **kwargs):
+  ''' a function that exports timeseries/1D variables from dataset to a CSV file '''
+  if ldebug:
+      print("Exporting Dataset '{}' to CSV file '{}'".format(dataset.name, filepath))
+  with open(filepath, mode='w') as csv:
+      csv.write(dataset.prettyPrint())
+      csv.write('\n\n')
+      csv.write(str(exp_list))      
+  # return
+  return filepath
           
 ## a method to tabulate variables (adapted from Variable) 
 def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}', cell_idx=None, cell_fct=None, 

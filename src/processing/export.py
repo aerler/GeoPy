@@ -21,6 +21,7 @@ from datasets import gridded_datasets
 from processing.multiprocess import asyncPoolEC
 from processing.misc import getMetaData,  getExperimentList, loadYAML, getTargetFile
 from utils.nctools import writeNetCDF
+from utils.misc import exportCSV
 # new variable functions and bias-correction 
 import processing.newvars as newvars
 from processing.bc_methods import findPicklePath
@@ -113,7 +114,7 @@ class ASCII_raster(FileFormat):
   
   def __init__(self, project=None, folder=None, prefix=None, bc_method=None, **expargs):
     ''' take arguments that have been passed from caller and initialize parameters '''
-    self.project = project; self.folder_pattern = folder; self.file_pattern = filename; self.bc_method = bc_method
+    self.project = project; self.folder_pattern = folder; self.file_pattern = prefix; self.bc_method = bc_method
     self.export_arguments = expargs
   
   @property
@@ -163,17 +164,31 @@ class ASCII_raster(FileFormat):
         i = -1; lprd = False
         for name in folder_names:
             i += 1    
-            if '{PERIOD' in name:
+            if '{PERIOD' in name or '{PRD' in name:
                 lprd = True; break
         if lprd:
             root_folder = '/'.join(folder_names[:i]).format(**metadict)
             period_pattern = folder_names[i] # the folder name containing the period string
-            metadict.pop('PERIOD')
-            link_name = period_pattern.format(PERIOD=lnkprd,**metadict)
-            link_dest = period_pattern.format(PERIOD=expprd,**metadict)
+            link_dest = period_pattern.format(**metadict)
+            metadict['PERIOD'] = lnkprd; metadict['PRD'] = lnkprd
+            link_name = period_pattern.format(**metadict)
             self.altprdlnk = (root_folder, link_dest, link_name)
     # return folder (no filename)
     return self.folder
+
+  def _createAltPrdLnk(self, root_folder, link_dest, link_name):
+    ''' put in alternative symlink (relative path) for period section '''
+    pwd = os.getcwd(); os.chdir(root_folder)
+    if not os.path.exists(link_name): 
+      os.symlink(link_dest, link_name) # create new symlink
+    if os.path.islink(link_name): 
+      os.remove(link_name) # remove old link before creating new one
+      os.symlink(link_dest, link_name) # create new symlink      
+    elif loverwrite:  
+      shutil.rmtree(link_name) # remove old folder and contents
+      os.symlink(link_dest, link_name) # create new symlink
+    os.chdir(pwd) # return to original directory
+    return None
   
   def prepareDestination(self, srcage=None, loverwrite=False):
     ''' create or clear the destination folder, as necessary, and check if source is newer (for skipping) '''
@@ -192,18 +207,8 @@ class ASCII_raster(FileFormat):
       lskip = ( age > srcage ) # skip if newer than source 
     if not os.path.exists(self.folder): raise IOError(self.folder)
     ## put in alternative symlink (relative path) for period section
-    if self.altprdlnk:
-      root_folder, link_dest, link_name = self.altprdlnk
-      pwd = os.getcwd(); os.chdir(root_folder)
-      if not os.path.exists(link_name): 
-        os.symlink(link_dest, link_name) # create new symlink
-      if os.path.islink(link_name): 
-        os.remove(link_name) # remove old link before creating new one
-        os.symlink(link_dest, link_name) # create new symlink      
-      elif loverwrite:  
-        shutil.rmtree(link_name) # remove old folder and contents
-        os.symlink(link_dest, link_name) # create new symlink
-      os.chdir(pwd) # return to original directory
+    if self.altprdlnk: # defined in self.defineDataset() above
+        self._createAltPrdLnk(*self.altprdlnk)
     # return with a decision on skipping
     return lskip 
     
@@ -221,7 +226,7 @@ class StationCSV(ASCII_raster):
   
   def __init__(self, project=None, folder=None, filename=None, bc_method=None, **expargs):
     ''' take arguments that have been passed from caller and initialize parameters '''
-    self.project = project; self.folder_pattern = folder; self.name_pattern = filename; self.bc_method = bc_method
+    self.project = project; self.folder_pattern = folder; self.file_pattern = filename; self.bc_method = bc_method
     self.export_arguments = expargs
   
   @property
@@ -232,50 +237,38 @@ class StationCSV(ASCII_raster):
   def defineDataset(self, dataset=None, mode=None, dataargs=None, lwrite=True, ldebug=False):
     ''' a method to set external parameters about the Dataset, so that the export destination
         can be determined (and returned) '''
-    folder = super(StationCSV,self).defineDataset(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, ldebug=ldebug)
-    self.filepath = os.path.join(folder,self.filename)
+    folder = super(StationCSV,self).defineDataset(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, ldebug=False)
+    filename = 'test_'+self.filename if ldebug else self.filename 
+    self.filepath = os.path.join(folder,filename)
     # return full path (single file)
     return self.filepath
   
   def prepareDestination(self, srcage=None, loverwrite=False):
     ''' create or clear the destination folder, as necessary, and check if source is newer (for skipping) '''
     ## prepare target dataset (which is mainly just a folder)
+    lskip = False # actually do export
     if not os.path.exists(self.folder): 
-      # create new folder
-      os.makedirs(self.folder)
-      lskip = False # actually do export
-    elif loverwrite:
-      shutil.rmtree(self.folder) # remove old folder and contents
       os.makedirs(self.folder) # create new folder
-      lskip = False # actually do export
-    else:
-      age = datetime.fromtimestamp(os.path.getmtime(self.folder))
-      # if source file is newer than target folder, recompute, otherwise skip
-      lskip = ( age > srcage ) # skip if newer than source 
-    if not os.path.exists(self.folder): raise IOError(self.folder)
+    elif os.path.exists(self.filepath):
+        if loverwrite: 
+            os.remove(self.filepath) # remove existing file
+        else: 
+            age = datetime.fromtimestamp(os.path.getmtime(self.folder))
+            # if source file is newer than target folder, recompute, otherwise skip
+            lskip = ( age > srcage )  and os.path.getsize(self.filepath) > 1e2 # skip if newer than source 
     ## put in alternative symlink (relative path) for period section
-    if self.altprdlnk:
-      root_folder, link_dest, link_name = self.altprdlnk
-      pwd = os.getcwd(); os.chdir(root_folder)
-      if not os.path.exists(link_name): 
-        os.symlink(link_dest, link_name) # create new symlink
-      if os.path.islink(link_name): 
-        os.remove(link_name) # remove old link before creating new one
-        os.symlink(link_dest, link_name) # create new symlink      
-      elif loverwrite:  
-        shutil.rmtree(link_name) # remove old folder and contents
-        os.symlink(link_dest, link_name) # create new symlink
-      os.chdir(pwd) # return to original directory
+    if self.altprdlnk: # defined in self.defineDataset() above
+        self._createAltPrdLnk(*self.altprdlnk)
     # return with a decision on skipping
     return lskip 
     
   def exportDataset(self, dataset):
     ''' method to write a Dataset instance to disk in the given format; this will be format specific '''
-    # export dataset to raster format
-    filedict = dataset.ASCII_raster(prefix=self.filename, varlist=None, folder=self.folder, **self.export_arguments)
+    # export dataset to CSV file
+    filepath = self.filepath
+    exportCSV(dataset=dataset, filepath=filepath, **self.export_arguments)
     # check first and last
-    if not os.path.exists(list(filedict.values())[0][0]): raise IOError(list(filedict.values())[0][0]) # random check
-    if not os.path.exists(list(filedict.values())[-1][-1]): raise IOError(list(filedict.values())[-1][-1]) # random check
+    if not os.path.exists(filepath): raise IOError(filepath)
 
   
 def getFileFormat(fileformat, bc_method=None, expargs=None):
@@ -406,9 +399,12 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
           source = BC.correct(source, asNC=False, varlist=bc_varlist, varmap=bc_varmap) # load bias-corrected variables into memory
       
       # create GDAL-enabled target dataset
-      sink = Dataset(axes=(source.xlon,source.ylat), name=expname, title=source.title, atts=source.atts.copy())
-      addGDALtoDataset(dataset=sink, griddef=source.griddef)
-      assert sink.gdal, sink
+      if hasattr(source,'gdal') and source.gdal:
+          sink = Dataset(axes=(source.xlon,source.ylat), name=expname, title=source.title, atts=source.atts.copy())
+          addGDALtoDataset(dataset=sink, griddef=source.griddef)
+          assert sink.gdal, sink
+      else:
+          sink = Dataset(name=expname, title=source.title, atts=source.atts.copy())
         
       # N.B.: for variables that are not bias-corrected, data are not loaded immediately but on demand; this way 
       #       I/O and computing can be further disentangled and not all variables are always needed
@@ -581,13 +577,13 @@ if __name__ == '__main__':
         export_arguments = config['export_parameters'] # this is actually a larger data structure
     else:
         # settings for testing and debugging
-        NP = 2; ldebug = False # for quick computations
-#         NP = 1 ; ldebug = True # just for tests
+#         NP = 2; ldebug = False # for quick computations
+        NP = 1 ; ldebug = True # just for tests
 #         modes = ('annual-mean','climatology', 'time-series')
 #         modes = ('annual-mean','climatology',)
 #         modes = ('annual-mean',)
-        modes = ('time-series','climatology')
-#         modes = ('climatology',)  
+#         modes = ('time-series','climatology')
+        modes = ('climatology',)  
 #         modes = ('time-series',)  
         loverwrite = True
         exp_list= None
@@ -604,21 +600,22 @@ if __name__ == '__main__':
         # WRF variables
         load_list += ['lat2D','lon2D','zs']
 #         ## for HGS/ASCII export
+        load_list = ['waterflx','liqwatflx','pet_wrf']
 #         load_list = []
 #         load_list += ['pet'] # HGS forcing
 #         load_list += ['precip','solprec','preccu','precnc','snwmlt']
 #         load_list += ['pet_wrf','pet','evap'] # ET
 #         load_list += ['waterflx','liqwatflx','snwmlt','snow',] # water flux / snow
         ## for NetCDF-4 export/analysis
-        load_list += ['pet_wrf','pet','evap', 'snwmlt','snow','snowh'] # water fluxes etc.
-        load_list += ['precip','liqprec','solprec','preccu','precnc',] # precip types
-        # PET variables (for WRF)
-        load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind & temperature
-        load_list += ['grdflx','A','SWDNB','e','LWDNB',] # radiation (short)
-#         load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
-#         # WRF constants
-#         load_list += ['lat2D','lon2D','zs','landuse','landmask','LANDUSEF','vegcat','SHDMAX','SHDMIN',
-#                     'SOILHGT','soilcat','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'] # constants
+#         load_list += ['pet_wrf','pet','evap', 'snwmlt','snow','snowh'] # water fluxes etc.
+#         load_list += ['precip','liqprec','solprec','preccu','precnc',] # precip types
+#         # PET variables (for WRF)
+#         load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind & temperature
+#         load_list += ['grdflx','A','SWDNB','e','LWDNB',] # radiation (short)
+# #         load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+# #         # WRF constants
+# #         load_list += ['lat2D','lon2D','zs','landuse','landmask','LANDUSEF','vegcat','SHDMAX','SHDMIN',
+# #                     'SOILHGT','soilcat','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'] # constants
         # period list
         periods = [] 
         periods += [15]
@@ -706,7 +703,8 @@ if __name__ == '__main__':
         bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
         # typically a specific grid is required
         grids = [] # list of grids to process
-        grids += [None]; project = None # special keyword for native grid
+#         grids += [None]; project = None # special keyword for native grid
+        grids += [None]; project = 'TEST' # special keyword for native grid
 #         grids += ['arb2']; project = 'ARB' # old, large grid for ARB project
 #         grids += ['arb3']; project = 'ARB' # new, trimmed grid for ARB project        
 #         grids += ['uph1']; project = 'Elisha' # grid for Elisha
@@ -723,20 +721,22 @@ if __name__ == '__main__':
         # station or shape for table extraction
         station = None; shape = None # regular gridded dataset        
         station = 'cosia'; project = 'COSIA'
-        ## export to ASCII raster
+        # HGS root folder for raster and CSV export
         HGS_ROOT = os.getenv('HGS_ROOT', os.getenv('DATA_ROOT', None)+'/HGS/')
+        ## export to ASCII raster
 #         export_arguments = dict(
-#             # NRCan
+# #             # NRCan
 # # #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(HGS_ROOT,bc_tag),
-#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(HGS_ROOT),
+# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(HGS_ROOT),
 # # #             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
 # # #             compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
 # # #             exp_list= ['liqwatflx',], src_varmap=dict(liqwatflx='liqwatflx_swe'), # varlist for SnoDAS
-#             compute_list = [], exp_list= ['pet_pts','pet_har','pet_haa','liqwatflx'], # varlist for MergedForcing
+# #             compute_list = [], exp_list= ['pet_pts','pet_har','pet_haa','liqwatflx'], # varlist for MergedForcing
 #             # WRF
 # #             exp_list= ['landuse','landmask'],
 # #             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
 # #                        'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'], # constants
+#             exp_list = ['waterflx','liqwatflx','pet_wrf'], # some test variables
 # #             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
 # #             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
 # #             compute_list = ['liqwatflx',], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet'], # short varlist for quick export
@@ -745,6 +745,7 @@ if __name__ == '__main__':
 # #             exp_list= ['lat2D','lon2D','zs','pet','liqwatflx'], # short varlist for quick export
 # #             compute_list = ['pet-1','pet-05'], exp_list= ['pet','pet-1','pet-05'], # varlist with shifts
 # #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(HGS_ROOT,bc_tag),
+#             folder = '{0:s}/TEST/{{EXP}}/{1:s}{{PRD}}/output_test/'.format(HGS_ROOT,bc_tag),
 # #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{PROJECT}/{EXPERIMENT}/{PERIOD}/',
 # #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{{PROJECT}}/{{EXPERIMENT}}/{bc_tag:s}{{PERIOD}}/'.format(bc_tag=bc_tag),
 # #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(HGS_ROOT),
@@ -758,39 +759,39 @@ if __name__ == '__main__':
         ## export to ASCII table/CSV (from 1D station/shape data only)
         exp_list = []
         assert station and not shape
-        export_arguments = dict(format = 'CSV', exp_list= exp_list, compute_list=None, 
-                                filename = '{{STN}}_{1:s}_{{PRD}}.csv'.format(bc_tag),
-                                folder = '{0:s}/{{PRJ}}/{{GRD}}/{{EXP}}/{1:s}{{PRD}}/station_data/'.format(HGS_ROOT,bc_tag),
+        export_arguments = dict(format = 'CSV', exp_list= exp_list, compute_list=None, ldebug=ldebug,
+                                filename = '{{STN}}_{0:s}_{{PRD}}.csv'.format(bc_tag),
+                                folder = '{0:s}/{{PRJ}}/{{EXP}}/{1:s}{{PRD}}/station_data/'.format(HGS_ROOT,bc_tag),
                                 station = station, shape = shape, project = project,
                                 fillValue = 0, noDataValue = -9999, lm3 = False) # see above...
         ## export to NetCDF (aux-file)
-        exp_list = []
-        exp_list += ['T2','Tmin','Tmax','SWDNB','snow','snowh'] # just for bias-correction
-        exp_list += ['pet_wrf','liqprec','solprec','precip','preccu','precnc','snwmlt',] # just for bias-correction
-        exp_list += ['waterflx','liqwatflx','netrad','netrad_bb0','netrad_bb', 'netrad_lw','vapdef',] # computed vars
-        exp_list += ['pet_pm','petrad','petwnd', 'pet_pms', 'pet_pt', 'pet_pts', 'pet_har', 'pet_haa', 'pet_hog'] # offline PET
-#         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWDNB','LWDNB','zs','lat2D','lon2D',]
-#         exp_list += ['SWDNB','SWUPB',]
-#         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','Q2','evap','waterflx','zs','lat2D','lon2D',]
-#         exp_list += ['liqwatflx','liqprec','solprec','preccu','precnc','precip','snwmlt','pet_wrf','pet']
-#         exp_list += ['liqwatflx-1','snwmlt-1','pet-1','liqwatflx-05','snwmlt-05','pet-05']
-        if bc_method:
-            filename = bc_method
-            if obs_dataset == 'NRCan': pass # for historical reasons, NRCan gets a free pass (default)
-            elif obs_dataset == 'Unity': filename += '1'
-            elif obs_dataset == 'CRU': filename += '2'
-            else:
-                raise NotImplemented("Need to assign number/identifier to obs dataset '{}'".format(obs_dataset))
-        else: 
-            filename = 'AUX'
-#         compute_list = ['waterflx','waterflx-1','liqwatflx','liqwatflx-1','snwmlt-1','pet-1','liqwatflx-05','snwmlt-05','pet-05']
-#         compute_list = ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
-        compute_list = ['precip','waterflx','liqwatflx','netrad','netrad_lw','netrad_bb','netrad_bb0','vapdef'] # variables that should be (re-)computed
-        compute_list += ['pet_pm','petrad','petwnd', 'pet_pms', 'pet_pt', 'pet_pts', 'pet_har', 'pet_haa', 'pet_hog'] # PET variables
-        export_arguments = dict(format = 'NetCDF',
-                                exp_list= exp_list, compute_list=compute_list, 
-                                project = filename, filetype = filename.lower(),
-                                lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
+#         exp_list = []
+#         exp_list += ['T2','Tmin','Tmax','SWDNB','snow','snowh'] # just for bias-correction
+#         exp_list += ['pet_wrf','liqprec','solprec','precip','preccu','precnc','snwmlt',] # just for bias-correction
+#         exp_list += ['waterflx','liqwatflx','netrad','netrad_bb0','netrad_bb', 'netrad_lw','vapdef',] # computed vars
+#         exp_list += ['pet_pm','petrad','petwnd', 'pet_pms', 'pet_pt', 'pet_pts', 'pet_har', 'pet_haa', 'pet_hog'] # offline PET
+# #         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWDNB','LWDNB','zs','lat2D','lon2D',]
+# #         exp_list += ['SWDNB','SWUPB',]
+# #         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','Q2','evap','waterflx','zs','lat2D','lon2D',]
+# #         exp_list += ['liqwatflx','liqprec','solprec','preccu','precnc','precip','snwmlt','pet_wrf','pet']
+# #         exp_list += ['liqwatflx-1','snwmlt-1','pet-1','liqwatflx-05','snwmlt-05','pet-05']
+#         if bc_method:
+#             filename = bc_method
+#             if obs_dataset == 'NRCan': pass # for historical reasons, NRCan gets a free pass (default)
+#             elif obs_dataset == 'Unity': filename += '1'
+#             elif obs_dataset == 'CRU': filename += '2'
+#             else:
+#                 raise NotImplemented("Need to assign number/identifier to obs dataset '{}'".format(obs_dataset))
+#         else: 
+#             filename = 'AUX'
+# #         compute_list = ['waterflx','waterflx-1','liqwatflx','liqwatflx-1','snwmlt-1','pet-1','liqwatflx-05','snwmlt-05','pet-05']
+# #         compute_list = ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
+#         compute_list = ['precip','waterflx','liqwatflx','netrad','netrad_lw','netrad_bb','netrad_bb0','vapdef'] # variables that should be (re-)computed
+#         compute_list += ['pet_pm','petrad','petwnd', 'pet_pms', 'pet_pt', 'pet_pts', 'pet_har', 'pet_haa', 'pet_hog'] # PET variables
+#         export_arguments = dict(format = 'NetCDF',
+#                                 exp_list= exp_list, compute_list=compute_list, 
+#                                 project = filename, filetype = filename.lower(),
+#                                 lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
       
     ## process arguments    
     if isinstance(periods, (np.integer,int)): periods = [periods]

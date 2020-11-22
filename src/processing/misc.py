@@ -216,20 +216,20 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     # load source data
     if lclim:
       if station:
-        loadfct = partial(WRF.loadWRF, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
+        loadfct = partial(WRF.loadWRF_Stn, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
                           period=period, filetypes=filetypes, varatts=None, ltrimT=False)
       elif shape:
-        loadfct = partial(WRF.loadWRF, experiment=exp, name=None, domains=domain, grid=grid, shape=shape, varlist=varlist,
+        loadfct = partial(WRF.loadWRF_Shp, experiment=exp, name=None, domains=domain, grid=grid, shape=shape, varlist=varlist,
                           period=period, filetypes=filetypes, varatts=None, ltrimT=False)
       else:
         loadfct = partial(WRF.loadWRF, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
                           period=period, filetypes=filetypes, varatts=None, lconst=True, ltrimT=False) # still want topography...
     elif lts:
       if station:
-        loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
+        loadfct = partial(WRF.loadWRF_StnTS, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
                         filetypes=filetypes, varatts=None, ltrimT=False)
       elif station:
-        loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
+        loadfct = partial(WRF.loadWRF_ShpTS, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
                         filetypes=filetypes, varatts=None, ltrimT=False)
       else:
         loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
