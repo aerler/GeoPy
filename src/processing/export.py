@@ -227,6 +227,9 @@ class StationCSV(ASCII_raster):
   def __init__(self, project=None, folder=None, filename=None, bc_method=None, **expargs):
     ''' take arguments that have been passed from caller and initialize parameters '''
     self.project = project; self.folder_pattern = folder; self.file_pattern = filename; self.bc_method = bc_method
+    # figure out climatology or datetime mode
+    mode = expargs.pop('time_aggregation','').lower()
+    self.ldatetime = not ( 'clim' in mode or 'mean' in mode )
     self.export_arguments = expargs
   
   @property
@@ -266,7 +269,7 @@ class StationCSV(ASCII_raster):
     ''' method to write a Dataset instance to disk in the given format; this will be format specific '''
     # export dataset to CSV file
     filepath = self.filepath
-    exportCSV(dataset=dataset, filepath=filepath, **self.export_arguments)
+    exportCSV(dataset=dataset, filepath=filepath, ldatetime=self.ldatetime, **self.export_arguments)
     # check first and last
     if not os.path.exists(filepath): raise IOError(filepath)
 
@@ -344,7 +347,9 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
     exp_list= expargs.pop('exp_list') # this handled outside of export
     compute_list = expargs.pop('compute_list', []) # variables to be (re-)computed - by default all
     src_varmap = expargs.pop('src_varmap', dict()) # names of variables in soruce dataset
+    l2annual = expargs.pop('l2annual',True) # legacy behavior is True (i.e. duplicate annual average)
     # initialize FileFormat class instance
+    expargs['time_aggregation'] = mode
     fileFormat = getFileFormat(expformat, bc_method=bc_method, expargs=expargs)
     # get folder for target dataset and do some checks
     expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
@@ -364,7 +369,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
       ## actually load datasets
       source = loadfct() # load source data
       # check period
-      if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
+      if 'period' in source.atts and dataargs.periodstr and dataargs.periodstr != source.atts.period: # a NetCDF attribute
           raise DateError("Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period))
       
       # load BiasCorrection object from pickle
@@ -399,13 +404,14 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
           source = BC.correct(source, asNC=False, varlist=bc_varlist, varmap=bc_varmap) # load bias-corrected variables into memory
       
       # create GDAL-enabled target dataset
-      if hasattr(source,'gdal') and source.gdal:
+      lgdal = hasattr(source,'gdal') and source.gdal
+      if lgdal:
           sink = Dataset(axes=(source.xlon,source.ylat), name=expname, title=source.title, atts=source.atts.copy())
           addGDALtoDataset(dataset=sink, griddef=source.griddef)
           assert sink.gdal, sink
       else:
           sink = Dataset(name=expname, title=source.title, atts=source.atts.copy())
-        
+          
       # N.B.: for variables that are not bias-corrected, data are not loaded immediately but on demand; this way 
       #       I/O and computing can be further disentangled and not all variables are always needed
       
@@ -421,7 +427,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
           variables = None # variable list
           var = None
           # (re-)compute variable, if desired...
-          if varname in compute_list:              
+          if compute_list and varname in compute_list:              
               if varname == 'precip': var = newvars.computeTotalPrecip(source)
               elif varname == 'waterflx': var = newvars.computeWaterFlux(source)
               elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)
@@ -481,9 +487,10 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
               if var and variables: raise VariableError(var,variables)
               elif var: variables = (var,)
               for var in variables:
-                  addGDALtoVar(var=var, griddef=sink.griddef)
-                  if not var.gdal and isinstance(fileFormat,ASCII_raster):
-                      raise GDALError("Exporting to ASCII_raster format requires GDAL-enabled variables.")
+                  if lgdal:
+                      addGDALtoVar(var=var, griddef=sink.griddef)
+                      if not var.gdal and isinstance(fileFormat,ASCII_raster):
+                          raise GDALError("Exporting to ASCII_raster format requires GDAL-enabled variables.")
                   # add to new dataset
                   sink += var
       # convert units
@@ -495,11 +502,13 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
       
       # compute seasonal mean if we are in mean-mode
       if mode[-5:] == '-mean': 
-          sink = sink.seasonalMean(season=mode[:-5], lclim=True)
+          taxatts = dict(name='tmp') if l2annual else dict(name='time')
+          sink = sink.seasonalMean(season=mode[:-5], lclim=True, taxatts=taxatts)
           # N.B.: to remain consistent with other output modes, 
           #       we need to prevent renaming of the time axis
-          sink = concatDatasets([sink,sink], axis='time', lensembleAxis=True)
-          sink.squeeze() # we need the year-axis until now to distinguish constant fields; now remove
+          if l2annual: 
+              sink = concatDatasets([sink,sink], axis='time', lensembleAxis=True)
+              sink.squeeze() # we need the year/tmp-axis until now to distinguish constant fields; now remove
       
       # print dataset
       if not lparallel and ldebug:
@@ -577,13 +586,12 @@ if __name__ == '__main__':
         export_arguments = config['export_parameters'] # this is actually a larger data structure
     else:
         # settings for testing and debugging
-#         NP = 2; ldebug = False # for quick computations
-        NP = 1 ; ldebug = True # just for tests
-#         modes = ('annual-mean','climatology', 'time-series')
+        NP = 4; ldebug = False # for quick computations
+#         NP = 1 ; ldebug = True # just for tests
+        modes = ('annual-mean','climatology', 'time-series')
 #         modes = ('annual-mean','climatology',)
-#         modes = ('annual-mean',)
-#         modes = ('time-series','climatology')
-        modes = ('climatology',)  
+#         modes = ('annual-mean',)  
+#         modes = ('climatology',)
 #         modes = ('time-series',)  
         loverwrite = True
         exp_list= None
@@ -598,14 +606,16 @@ if __name__ == '__main__':
 #         print(CMC_adjusted)
 #         load_list = ['lat2D','lon2D','pet',]+CMC_adjusted # 'precip',
         # WRF variables
-        load_list += ['lat2D','lon2D','zs']
-#         ## for HGS/ASCII export
-        load_list = ['waterflx','liqwatflx','pet_wrf']
+#         load_list += ['lat2D','lon2D','zs']
+        ## for HGS/ASCII export
+#         load_list = ['waterflx','liqwatflx','pet_wrf']
 #         load_list = []
 #         load_list += ['pet'] # HGS forcing
 #         load_list += ['precip','solprec','preccu','precnc','snwmlt']
 #         load_list += ['pet_wrf','pet','evap'] # ET
 #         load_list += ['waterflx','liqwatflx','snwmlt','snow',] # water flux / snow
+        ## for HGS/ASCII export
+        load_list = ['precip','T2','pet','pet_pm','pet_har','pet_pt','grdflx',]
         ## for NetCDF-4 export/analysis
 #         load_list += ['pet_wrf','pet','evap', 'snwmlt','snow','snowh'] # water fluxes etc.
 #         load_list += ['precip','liqprec','solprec','preccu','precnc',] # precip types
@@ -640,7 +650,7 @@ if __name__ == '__main__':
     #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
         CESM_filetypes = ['atm','lnd']
         # WRF experiments (short or long name)
-        bc_reference = None # see below - None means the experiment itself
+        bc_reference = None # see below - None means experiment base name (without period extension)
 #         WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
         WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
         WRF_experiments = [] # use None to process all WRF experiments
@@ -656,15 +666,15 @@ if __name__ == '__main__':
 #         WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #         WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #         WRF_experiments += ['max-ensemble']
-#         WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
-#         WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
-        WRF_experiments += ['max-ctrl',]
-#         WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#         WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]; bc_reference = 'max-ensemble'    
-#         WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',] ; bc_reference = 'max-ensemble'
-#         WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
-#         WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]; bc_reference = 'ctrl-ensemble'    
-#         WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]; bc_reference = 'ctrl-ensemble'
+        WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
+        WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
+#         WRF_experiments += ['max-ctrl',]
+        WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+        WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]; bc_reference = 'max-ensemble'    
+        WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',] ; bc_reference = 'max-ensemble'
+        WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
+        WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]; bc_reference = 'ctrl-ensemble'    
+        WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]; bc_reference = 'ctrl-ensemble'
 #         WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
 #         WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
 #         WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
@@ -685,18 +695,17 @@ if __name__ == '__main__':
 #         WRF_filetypes = ('hydro',) # available input files
 #         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
 #         WRF_filetypes = ('hydro','xtrm','srfc','lsm',) # available input files
-        WRF_filetypes = ('aux',) # available input files
+#         WRF_filetypes = ('aux','hydro','srfc','lsm',); stn_tag = 'noBC' # available input files
 #         WRF_filetypes = ('const',) # with radiation files
+        WRF_filetypes = ('mybc2',); stn_tag = 'mybc2' # biascorrected files...
         ## bias-correction parameter
         bc_method = None; bc_tag = '' # no bias correction
-# #         bc_method = 'SMBC' # bias correction method (None: no bias correction)        
-# #         bc_method = 'AABC' # bias correction method (None: no bias correction)        
+# # #         bc_method = 'SMBC' # bias correction method (None: no bias correction)        
+# # #         bc_method = 'AABC' # bias correction method (None: no bias correction)        
 #         bc_method = 'MyBC' # bias correction method (None: no bias correction)        
 #         obs_dataset = 'CRU' # the observational dataset 
 #         bc_tag = bc_method+'_'+obs_dataset+'_' 
-#         bc_reference = 'ctrl-ensemble' # reference experiment (None: auto-detect based on name)
-# #         bc_reference = 'max-ensemble' # reference experiment (None: auto-detect based on name)
-# #         bc_reference = None # auto-detect reference experiment based on name
+        # bc_reference = None # auto-detect reference experiment based on name
         bc_varmap = dict(TSmin='Tmin', TSmax='Tmax',Tmean='T2', evap='pet', 
                          pet='pet_wrf', pet_wrf='pet', # not sure what name is currently in use, but offline pet would be pet_pm, so...
                          SWUPB='SWDNB',SWD='SWDNB',SWDNB='SWD', LWDNB='GLW',GLW='LWDNB',)
@@ -704,8 +713,7 @@ if __name__ == '__main__':
         # typically a specific grid is required
         grids = [] # list of grids to process
 #         grids += [None]; project = None # special keyword for native grid
-        grids += [None]; project = 'TEST' # special keyword for native grid
-#         grids += ['arb2']; project = 'ARB' # old, large grid for ARB project
+        grids += ['arb2']; project = 'ARB' # old, large grid for ARB project
 #         grids += ['arb3']; project = 'ARB' # new, trimmed grid for ARB project        
 #         grids += ['uph1']; project = 'Elisha' # grid for Elisha
 #         grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
@@ -720,7 +728,7 @@ if __name__ == '__main__':
 #         grids += ['son2']; project = 'SON' # southern Ontario watersheds
         # station or shape for table extraction
         station = None; shape = None # regular gridded dataset        
-        station = 'cosia'; project = 'COSIA'
+        station = 'cosia'; project = 'MLWC'
         # HGS root folder for raster and CSV export
         HGS_ROOT = os.getenv('HGS_ROOT', os.getenv('DATA_ROOT', None)+'/HGS/')
         ## export to ASCII raster
@@ -757,10 +765,9 @@ if __name__ == '__main__':
 #             fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
 #             lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
         ## export to ASCII table/CSV (from 1D station/shape data only)
-        exp_list = []
         assert station and not shape
-        export_arguments = dict(format = 'CSV', exp_list= exp_list, compute_list=None, ldebug=ldebug,
-                                filename = '{{STN}}_{0:s}_{{PRD}}.csv'.format(bc_tag),
+        export_arguments = dict(format = 'CSV', exp_list=load_list[:], compute_list=None, ldebug=ldebug, l2annual=False,
+                                filename = '{{STN}}_{0:s}_{{PRD}}.csv'.format(stn_tag.lower()),
                                 folder = '{0:s}/{{PRJ}}/{{EXP}}/{1:s}{{PRD}}/station_data/'.format(HGS_ROOT,bc_tag),
                                 station = station, shape = shape, project = project,
                                 fillValue = 0, noDataValue = -9999, lm3 = False) # see above...

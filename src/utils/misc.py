@@ -16,7 +16,50 @@ import collections as col
 from geodata.misc import ArgumentError, isEqual, AxisError
 
 
-## reverse enumrator
+def toDatetime64(time_axis, units=None, start_dt=None, sampling=None, llong_name=True):
+    ''' construct a datetime64 array '''
+    from geodata.base import Variable
+    # infer parameters
+    if isinstance(time_axis,Variable):
+        if units is None: 
+            units = time_axis.units
+            if llong_name: # try to get start date from long_name
+                long_name = time_axis.atts.get('long_name','')
+                if units.lower() in long_name.lower() and 'since' in long_name.lower():
+                    units = long_name # basically the CF-style units, e.g. 'Months since 1979-01'
+        time_axis = time_axis[:]
+    elif not isinstance(time_axis,(np.ndarray,tuple,list)):
+        raise TypeError(time_axis)
+    if units and 'since' in units.lower():
+        units, since_start_dt = units.lower().split('since') # can leave as string
+    else: since_start_dt = None
+    if start_dt is None:
+        if since_start_dt is None:
+            raise ArgumentError('Require start date in time units to convert to datetime64!')
+        else: start_dt = since_start_dt
+    if sampling is None: 
+        sampling = datetimeSampling(units)
+    # create datetime64 vector
+    start_dt = np.datetime64(start_dt, sampling)
+    dt64_list = [start_dt + np.timedelta64(t,sampling) for t in time_axis]
+    dt64_array = np.asarray(dt64_list, dtype='datetime64[{:s}]'.format(sampling))
+    # return datetime64 vector
+    return dt64_array
+
+def datetimeSampling(units):
+    ''' convert plain-text time units to datetime64 sampling rates '''
+    if 'second' in units.lower(): sampling = 's'
+    elif 'minute' in units.lower(): sampling = 'm'
+    elif 'hour' in units.lower(): sampling = 'h'
+    elif 'day' in units.lower(): sampling = 'D'
+    elif 'month' in units.lower(): sampling = 'M'
+    elif 'year' in units.lower(): sampling = 'Y'
+    else:
+        raise AxisError("Unable to parse time units for datetime conversion: '{}'".format(units))
+    return sampling
+
+
+## reverse enumerator
 def reverse_enumerate(iterable):
     ''' return a tuple with the elements of 'iterable' in reverse order, along with the proper indices;
         a better implementation would be to define an actual iterator, but this is sufficient for now '''
@@ -39,14 +82,45 @@ def containerDepth(container, classes=(tuple,list)):
 
 
 ## function to write a timeseries/1D dataset to a CSV file
-def exportCSV(dataset, filepath, exp_list=None, ldebug=False, **kwargs):
+def exportCSV(dataset, filepath, varlist=None, ldatetime=True, ldebug=False, **kwargs):
   ''' a function that exports timeseries/1D variables from dataset to a CSV file '''
   if ldebug:
       print("Exporting Dataset '{}' to CSV file '{}'".format(dataset.name, filepath))
+  ## get datetime vector  
+  tax = dataset.axes['time']
+  time = tax[:]
+  ltime = True
+  if np.issubdtype(tax.dtype,np.datetime64):
+      if ldatetime: pass # datetime64 is the preferred way
+      else: time = np.arange(len(tax))
+  elif ldatetime and 'since' in tax.units.lower():
+      # convert to datetime64
+      time = toDatetime64(time, units=tax.units)
+  elif ldatetime and 'long_name' in tax.atts and 'since' in tax.atts['long_name'].lower():
+      # convert to datetime64, inferring start date from long_name
+      time = toDatetime64(tax, units=None, llong_name=True)
+  else:
+      if len(tax)==1: ltime = False # usually long-term mean - don't print time
+  ## get variable list and write table
+  if varlist: varlist = [dataset[varname] for varname in varlist]
+  else: varlist = dataset.variables.values()
+  # truncate floats to 32 bit
+  for var in varlist:
+      if np.issubdtype(var.dtype,np.float):
+          var.data_array = var.data_array.astype(np.float32)
+  n = 1 if time is None else len(tax)
+  ## write table
   with open(filepath, mode='w') as csv:
-      csv.write(dataset.prettyPrint())
-      csv.write('\n\n')
-      csv.write(str(exp_list))      
+      for i in range(-2,n):
+          if ltime:
+              if i == -2: csv.write(tax.name+', ') # variable names
+              elif i == -1: csv.write(tax.units+', ') # variable units
+              else: csv.write(str(time[i])+', ') # variable units          
+          for var in varlist:
+              if i == -2: csv.write(var.name+', ') # variable names
+              elif i == -1: csv.write(var.units+', ') # variable units
+              else: csv.write(str(var[i])+', ') # variable units          
+          csv.write('\n') # finish line
   # return
   return filepath
           

@@ -138,7 +138,7 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, grid=None, shape=None,
   # return filename
   return filename
 
-def getSourceAge(filelist=None, fileclasses=None, filetypes=None, exp=None, domain=None,
+def getSourceAge(filelist=None, fileclasses=None, filetypes=None, exp=None, domain=None, station=None, shape=None,
                  periodstr=None, gridstr=None, lclim=None, lts=None):
   ''' function to to get the latest modification date of a set of filetypes '''
   srcage = datetime.fromordinal(1) # the beginning of time (proleptic Gregorian calendar)
@@ -152,7 +152,9 @@ def getSourceAge(filelist=None, fileclasses=None, filetypes=None, exp=None, doma
   else:    
     # prepare period and grid strings
     periodstr = '_{}'.format(periodstr) if periodstr else ''
-    gridstr = '_{}'.format(gridstr) if gridstr else ''    
+    gridstr = '_{}'.format(gridstr) if gridstr else ''  
+    if station: gridstr = '_{}'.format(station.lower()) + gridstr
+    if shape: gridstr = '_{}'.format(shape.lower()) + gridstr
     # assemble filenames from dataset arguments
     for filetype in filetypes:
       fileclass = fileclasses[filetype] # avoid WRF & CESM name collision
@@ -211,7 +213,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
       datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}' (d{:02d})".format(filetypes[0], dataset_name, domain)
     else: datamsgstr = "Processing WRF dataset from Experiment '{:s}' (d{:02d})".format(dataset_name, domain)       
     # figure out age of source file(s)
-    srcage = getSourceAge(fileclasses=fileclasses, filetypes=filetypes, exp=exp, domain=domain,
+    srcage = getSourceAge(fileclasses=fileclasses, filetypes=filetypes, exp=exp, domain=domain, station=station, shape=shape,
                           periodstr=periodstr, gridstr=gridstr, lclim=lclim, lts=lts)
     # load source data
     if lclim:
@@ -228,8 +230,8 @@ def getMetaData(dataset, mode, dataargs, lone=True):
       if station:
         loadfct = partial(WRF.loadWRF_StnTS, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
                         filetypes=filetypes, varatts=None, ltrimT=False)
-      elif station:
-        loadfct = partial(WRF.loadWRF_ShpTS, experiment=exp, name=None, domains=domain, grid=grid, station=station, varlist=varlist,
+      elif shape:
+        loadfct = partial(WRF.loadWRF_ShpTS, experiment=exp, name=None, domains=domain, grid=grid, shape=shape, varlist=varlist,
                         filetypes=filetypes, varatts=None, ltrimT=False)
       else:
         loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,

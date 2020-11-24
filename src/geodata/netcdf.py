@@ -719,7 +719,8 @@ class DatasetNetCDF(Dataset):
                 if varobj.shape != ncvar.shape[:-1] or varobj.ncvar.dimensions != ncvar.dimensions:
                   raise DatasetError("Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var))
               else: 
-                if varobj.shape != ncvar.shape or varobj.ncvar.dimensions != ncvar.dimensions:              
+                ncshape = tuple(i for i in ncvar.shape if i > 1) if squeeze else ncvar.shape
+                if varobj.shape != ncshape or varobj.ncvar.dimensions != ncvar.dimensions:              
                   raise DatasetError("Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var))
                 if 'units' in ncvar.ncattrs() and not ( varobj.ncvar.units == ncvar.units or varobj.units == ncvar.units ): # check units as well              
                   raise DatasetError("Error constructing Dataset: Variables '{:s}' from different files have incompatible units.".format(var))

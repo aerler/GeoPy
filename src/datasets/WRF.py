@@ -24,6 +24,7 @@ from datasets.common import grid_folder, selectElements, stn_params, shp_params,
 from warnings import warn
 from collections import OrderedDict
 from utils.constants import precip_thresholds
+from utils.misc import datetimeSampling, toDatetime64
 
 dataset_name = 'WRF' # dataset name
 root_folder = getRootFolder(dataset_name=dataset_name)
@@ -929,36 +930,30 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
             raise NetCDFError("Parsing of units for daily time axis failed: '{}'".format(dataset.time.units))
     if ldatetime:
         tax = dataset.time; ts_array = None
-        # try to load time stamps (preferred method)
-        if 'time_stamp' in dataset.dataset.variables:
-            ts_array = dataset.dataset.variables['time_stamp'][:]
-        elif 'Times' in dataset.dataset.variables:
-            ts_array = dataset.dataset.variables['Times'][:]
-        if isinstance(ts_array,np.ma.masked_array) and ts_array.mask.any():
-            ts_array = None
-        elif ts_array.ndim == 2:
-            ts_array = nc.chartostring(ts_array)
-        # parse units of time
-        if 'hour' in tax.units.lower(): sampling = 'h'
-        elif 'day' in tax.units.lower(): sampling = 'D'
-        elif 'month' in tax.units.lower(): sampling = 'M'
-        elif 'year' in tax.units.lower(): sampling = 'Y'
+        if 'since' in tax.units.lower():
+            dt_array = toDatetime64(tax) # try to infer everything from axis (works with CF convention)
+        elif hasattr(experiment, 'begindate'):
+            dt_array = toDatetime64(tax, start_dt=experiment.begindate) # infer from axis, but supplement start date
         else:
-            raise AxisError("Unable to parse time units for datetime conversion: '{}'".format(tax.units))
-        # convert to datetime64 array
-        if ts_array is None:
-            # back-up method for monthly data
-            if sampling == 'M' and hasattr(experiment, 'begindate'):
-                startdate = np.datetime64(experiment.begindate, sampling)
-                enddate = startdate + np.timedelta64(len(tax), sampling)
-                dt_array = np.arange(startdate, enddate, dtype='datetime64[{}]'.format(sampling))
+            # alternatively, try to load time stamps
+            if 'time_stamp' in dataset.dataset.variables:
+                ts_array = dataset.dataset.variables['time_stamp'][:]
+            elif 'Times' in dataset.dataset.variables:
+                ts_array = dataset.dataset.variables['Times'][:]
             else:
+                ts_array = None
+            if isinstance(ts_array,np.ma.masked_array) and ts_array.mask.any():
+                ts_array = None
+            elif ts_array.ndim == 2:
+                ts_array = nc.chartostring(ts_array)
+            # convert to datetime64 array
+            if ts_array is None:
                 raise NotImplementedError("Unable to infer valid dates for construction of datetime64 array.")
-                # N.B.: the above method may very well also work for other time intervals, but I have no data 
-                #       to test this at the moment, hence I am leaving it as 'not implemented' not now...
-        else:
-            # convert to datetime64 of appropriate sampling and assign as coordinate
-            dt_array = ts_array.astype('datetime64[{}]'.format(sampling))
+            else:
+                # parse units of time
+                sampling = datetimeSampling(tax.units)
+                # convert to datetime64 of appropriate sampling and assign as coordinate
+                dt_array = ts_array.astype('datetime64[{}]'.format(sampling))
         assert len(tax)==dt_array.size, dt_array.shape
         # create new time axis
         new_tax = Axis(name='time', units=tax.units, coord=dt_array, atts=tax.atts)
