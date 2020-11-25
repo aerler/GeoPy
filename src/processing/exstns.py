@@ -201,10 +201,10 @@ if __name__ == '__main__':
     # target data specs
     stations = config['stations']
   else:
+    NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 4 ; ldebug = False # for quick computations
-#     modes = ('climatology','time-series')
-    modes = ('climatology',)
+    modes = ('climatology','time-series')
+#     modes = ('climatology',)
     loverwrite = True
     varlist = None
     periods = []
@@ -245,11 +245,11 @@ if __name__ == '__main__':
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
 #     WRF_experiments += ['ctrl-1','ctrl-2050','ctrl-2100',]    
 #     WRF_experiments += ['max-ctrl',]
-    WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
+#     WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
     WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
-#     WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
-#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
+    WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
 #     WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
 #     WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
 #     WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]        
@@ -257,8 +257,8 @@ if __name__ == '__main__':
     # other WRF parameters 
     domains = 2 # domains to be processed
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','plev3d','aux') # filetypes to be processed
-    WRF_filetypes = ('hydro','xtrm','srfc','lsm','aux',)
-#     WRF_filetypes = ('aux',)
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm','aux',)
+    WRF_filetypes = ('aux',)
 #     WRF_filetypes = ('mybc2',); grid = 'arb2' # for COSIA
 #     WRF_filetypes = ('const',); periods = None
 #     grid = 'grw2'
