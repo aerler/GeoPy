@@ -10,9 +10,7 @@ a major secondary purpose of this module is also, to keep xarray dependencies ou
 
 
 # external imports
-import datetime as dt
 import pandas as pd
-import os
 from warnings import warn
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
@@ -25,10 +23,10 @@ import inspect
 from datasets.common import getRootFolder, grid_folder
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
+from datasets.misc import getFolderFileName, addConstantFields
 # for georeferencing
 from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
 from geospatial.xarray_tools import addGeoReference, loadXArray, updateVariableAttrs, computeNormals
-from geodata.misc import DatasetError
 
 ## Meta-vardata
 
@@ -78,104 +76,6 @@ default_dataset_index = dict(precip='NRCan', precip_adj='NRCan', Tmin='NRCan', T
                              lat2D='const', lon2D='const', zs='const')
 dataset_varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
 default_varlist = [varname for varname in varlist if varname not in default_dataset_index]
-
-
-## helper functions
-
-def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, resolution=None, bias_correction=None, 
-                      mode=None, period=None, shape=None, station=None, lcreateFolder=True):
-    ''' function to provide the folder and filename for the requested dataset parameters '''
-    if mode is None:
-        mode = 'clim' if period else 'daily'
-    # some default settings
-    if dataset is None: 
-        dataset = default_dataset_index.get(varname,'MergedForcing')
-    # dataset-specific settings
-    if dataset.lower() == 'mergedforcing': 
-        ds_str = ds_str_rs = 'merged'
-    elif dataset.lower() == 'nrcan':
-        if not resolution: resolution = 'CA12'
-        ds_str = dataset.lower()
-        ds_str_rs = ds_str + '_' + resolution.lower()
-    else:
-        ds_str = ds_str_rs = dataset.lower()
-    # construct filename
-    gridstr = '_' + grid.lower() if grid else ''
-    # add shape or station identifier in front of grid
-    if shape and station: 
-        raise DatasetError((shape,station))
-    elif shape: gridstr = '_' + shape.lower() + gridstr
-    elif station: gridstr = '_' + station.lower() + gridstr
-    bcstr = '_' + bias_correction.lower() if bias_correction else ''
-    if mode.lower() == 'daily': name_str = bcstr + '_' + varname.lower() + gridstr
-    else: name_str = bcstr + gridstr
-    mode_str = mode.lower()
-    if period is None: pass
-    elif isinstance(period,str): mode_str += '_'+period
-    elif isinstance(period,(tuple,list)): mode_str += '_{}-{}'.format(*period)
-    else: raise NotImplementedError(period)
-    filename = '{}{}_{}.nc'.format(ds_str_rs, name_str, mode_str)
-    # construct folder
-    folder = getRootFolder(dataset_name=dataset, fallback_name='MergedForcing')
-    if mode.lower() == 'daily':
-        folder += ds_str+'_daily'
-        if grid: 
-            folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
-            if resampling: 
-                folder = '{}/{}'.format(folder,resampling) # different resampling options are stored in subfolders
-                # could auto-detect resampling folders at a later point... 
-    else: folder += ds_str+'avg'
-    if folder[-1] != '/': folder += '/'
-    if lcreateFolder: os.makedirs(folder, exist_ok=True)
-    # return folder and filename
-    return folder,filename
-
-
-def addConstantFields(xds, const_list=None, grid=None):
-    ''' add constant auxiliary fields like topographic elevation and geographic coordinates to dataset '''
-    if const_list is None:
-        const_list = ['lat2D', 'lon2D']
-    # find horizontal coordinates
-    dims = (xds.ylat,xds.xlon)
-    for rv in xds.data_vars.values():
-        if xds.ylat in rv.dims and xds.xlon in rv.dims: break
-    if dask.is_dask_collection(rv):
-        chunks = {dim:max(chk) for dim,chk in zip(rv.dims, rv.chunks) if dim in dims}
-    else:
-        chunks = None # don't chunk if nothing else is chunked...
-    # add constant variables
-    llat2D = 'lat2D' in const_list; llon2D = 'lon2D' in const_list  
-    if llat2D or llon2D:
-        # add geographic coordinate fields 
-        if grid is None: 
-            # infer from lat/lon coordinates
-            if 'lon' in xds.dims and 'lat' in xds.dims:
-                xlon = xds['lon'].values; xlat = xds['lat'].values
-                lon2D,lat2D = np.meshgrid(xlon,xlat)
-                assert lon2D.shape == lat2D.shape
-                assert lon2D.shape == (len(xlat),len(xlon)), lon2D.shape
-            else:
-                raise DatasetError("Need latitude and longitude coordinates or GridDef object to infer lat2D or lon2D.")
-        else:
-            # get fields from griddef
-            from geodata.gdal import loadPickledGridDef
-            griddef = loadPickledGridDef(grid=grid)
-            lat2D = griddef.lat2D; lon2D = griddef.lon2D
-        # add local latitudes
-        if llat2D:
-            atts = dict(name='lat2d', long_name='Latitude', units='deg N')
-            xvar = xr.DataArray(data=lat2D, attrs=atts, dims=dims)
-            if chunks: xvar = xvar.chunk(chunks=chunks)
-            xds['lat2D'] = xvar
-        # add local longitudes
-        if llon2D:
-            atts = dict(name='lon2d', long_name='Longitude', units='deg E')
-            xvar = xr.DataArray(data=lon2D, attrs=atts, dims=dims)
-            if chunks: xvar = xvar.chunk(chunks=chunks)
-            xds['lon2D'] = xvar 
-    if 'zs' in const_list:
-        print("Loading of surface/topographic elevation is not yet implemented")
-    return xds        
 
 
 ## functions to load NetCDF datasets (using xarray)
@@ -265,8 +165,8 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
     ''' function to load gridded monthly transient merged forcing data '''
     # resolve folder and filename
     file_args = {key:kwargs.pop(key,None) for key in ('resampling', 'resolution', 'bias_correction')}
-    folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, mode=mode, period=period, 
-                                        shape=shape, station=station, lcreateFolder=False, **file_args)
+    folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, mode=mode, period=period, lcreateFolder=False,  
+                                        shape=shape, station=station, dataset_index=default_dataset_index, **file_args)
     #print(folder,filename)
     # remove some common arguments that have no meaning
     if name is None: name = dataset_name
@@ -409,13 +309,16 @@ if __name__ == '__main__':
 
 #   from multiprocessing.pool import ThreadPool
 #   dask.set_options(pool=ThreadPool(4))
+ 
+  ts_name = 'time_stamp'
+  process_dataset = dataset_name # we can't overwrite dataset_name without causing errors...
 
   work_loads = []
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
-  work_loads += ['compute_derived']
-#   work_loads += ['load_Daily']
+#   work_loads += ['compute_derived']
+  work_loads += ['load_Daily']
 #   work_loads += ['monthly_mean'          ]
 #   work_loads += ['load_TimeSeries'      ]
 #   work_loads += ['monthly_normal'        ]
@@ -423,15 +326,12 @@ if __name__ == '__main__':
 
   # some settings
 #   resolution = 'CA12'
-  resolution = 'SON60'  
-  grid = None
+  resolution = 'SON60'; process_dataset = 'NRCan'
+  grid = 'snw2'
 #   grid = 'hd1' # small Quebec grid
 #   grid = 'son2' # high-res Southern Ontario
 #   grid = 'on1'
   pntset = 'sonshp'
- 
-  ts_name = 'time_stamp'
-  process_dataset = dataset_name # we can't overwrite dataset_name without causing errors...
   
  
   # loop over modes 
@@ -508,7 +408,8 @@ if __name__ == '__main__':
         print(prdstr)            
         
         # save resampled dataset
-        folder, filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='clim')
+        folder, filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='clim', 
+                                             dataset_index=default_dataset_index)
         # write to NetCDF
         var_enc = dict(zlib=True, complevel=1, _FillValue=-9999)
         encoding = {varname:var_enc for varname in cds.data_vars.keys()}
@@ -551,7 +452,7 @@ if __name__ == '__main__':
         
         # process just NRCan dataset
         varlist = {'NRCan':None, 'const':None}
-        new_dataset = 'NRCan'; resolution = 'SON60'
+        process_dataset = 'NRCan'; resolution = 'SON60'
         
 #         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True,
 #                                       resolution=resolution, lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
@@ -572,8 +473,8 @@ if __name__ == '__main__':
         print('')
         
         # define destination file
-        nc_folder, nc_filename = getFolderFileName(dataset=new_dataset, grid=grid, resolution=resolution, 
-                                                   bias_correction=None, mode='monthly')
+        nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, grid=grid, resolution=resolution, 
+                                                   bias_correction=None, mode='monthly', dataset_index=default_dataset_index)
         nc_filepath = nc_folder + nc_filename
         print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
         # write to NetCDF
@@ -747,7 +648,8 @@ if __name__ == '__main__':
                 # find missing data
                 mia_var = rad_var[np.isnan(rad_var.data)]
                 if len(mia_var) > 0:
-                    nc_folder,nc_filename = getFolderFileName(varname=varname, dataset='MergedForcing', resolution=resolution, grid=grid, resampling=None,)
+                    nc_folder,nc_filename = getFolderFileName(varname=varname, dataset='MergedForcing', resolution=resolution, grid=grid, 
+                                                              resampling=None, dataset_index=default_dataset_index)
                     txt_filename = 'missing_timessteps '+nc_filename[:-3]+'.txt'
                     print("\n   ***   Missing Timesteps   ***   \n   (for Radiation Data)")
                     filepath = nc_folder+txt_filename
@@ -846,8 +748,8 @@ if __name__ == '__main__':
             print('\n')
             print(nds)
             # file path based on variable parameters
-            nc_folder,nc_filename = getFolderFileName(varname=varname, dataset=ds_attrs['name'], resolution=resolution, 
-                                                      grid=grid, resampling=resampling,)
+            nc_folder,nc_filename = getFolderFileName(varname=varname, dataset=ds_attrs['name'], resolution=resolution, grid=grid, 
+                                                      resampling=resampling, dataset_index=default_dataset_index)
             nc_filepath = nc_folder + nc_filename
             print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
             # write to NetCDF

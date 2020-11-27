@@ -17,7 +17,7 @@ from geodata.gdal import GridDefinition, addGDALtoVar
 from datasets.common import getRootFolder, loadObservations, transformMonthly, addLengthAndNamesOfMonth, monthlyTransform, addLandMask
 from geodata.misc import DatasetError, VariableError, AxisError
 from utils.nctools import writeNetCDF
-
+from datasets.misc import loadXRDataset
 
 ## NRCan Meta-data
 
@@ -110,22 +110,19 @@ netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,256,256))
 
 
-
-def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resolution='CA12', resampling=None, lgeoref=True,
-                    geoargs=None, chunks=None, lautoChunk=False, lxarray=True, lgeospatial=True, **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+def loadNRCan_Daily(varname=None, varlist=None, grid=None, resolution=None, shape=None, station=None, 
+                    resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None,  
+                    chunks=None, lautoChunk=False, lxarray=True, lgeospatial=True, **kwargs):
+    ''' function to load daily NRCan data from NetCDF-4 files using xarray and add some projection information '''
     if not ( lxarray and lgeospatial ): 
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
-    from geospatial.xarray_tools import loadXArray
-    if folder is None: folder = daily_folder
-    if resolution is None: resolution = 'CA12' # default
+    if resolution is None: 
+        if grid and grid[:3] in ('son','snw',): resolution = 'SON60'
+        else: resolution = 'CA12' # default
     default_varlist = res_varlists.get(resolution, None)
-    xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=None, resolution=resolution,
-                     filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
-                     geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
-    xds.attrs['name'] = 'NRCan'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries'
-    if resolution is not None and 'resolution' not in xds.attrs: xds.attrs['resolution'] = resolution
-    if resampling is not None and 'resampling' not in xds.attrs: xds.attrs['resampling'] = resampling 
+    xds = loadXRDataset(varname=varname, varlist=varlist, dataset='NRCan', grid=grid, resolution=resolution, shape=shape,
+                        station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap,  
+                        lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
     return xds
 
 
@@ -682,7 +679,7 @@ loadShapeTimeSeries  = loadNRCan_ShpTS # time-series without associated grid (e.
 
 if __name__ == '__main__':
   
-#     mode = 'test_daily'
+    mode = 'test_daily'
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
@@ -690,7 +687,7 @@ if __name__ == '__main__':
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
 #     mode = 'convert_Daily'
-    mode = 'convert_to_netcdf'
+#     mode = 'convert_to_netcdf'
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
@@ -772,56 +769,11 @@ if __name__ == '__main__':
         #print(ds.variables)
         #print(xds['time'])
     
-    elif mode == 'convert_Daily':
-        
-        ## N.B.: this processes the entire dataset in-memory, which is not really feasible for daily data;
-        #        use the convert_to_netcdf option above
-        
-        # parameters
-#         snow_density = 'ephemeral'
-        snow_density = 'maritime'
-#         snow_density = 'prairies'
-        if not os.path.exists(daily_folder): os.mkdir(daily_folder)
-        # test values
-        varname = 'pcp'; period = (2014,2015); snow_density = None
-        split_axdefs = dict(year= dict(name='year', units='year', coord=np.arange(2014,2015)),
-                            day = dict(name='day', units='day', coord=np.arange(1,367)),) # time coordinate
-        merged_atts = dict(name='time', units='day', long_name='Days since 2014-01-01', merged_axes = ('year','day'))
-        vardefs = {varname:day12_vardefs[varname]}; derived_vars = None;
-        file_tag = day12_vardefs[varname]['name'] # use common variable name as file tag
-        file_tag += '_test'
-        # test values
-#         period = (1970,2000) # for production
-#         period = (1981,2010) # for production
-#         period = (1991,2000) # for testing
-#         vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **hist_defaults), # 2m maximum temperature, originally in degrees Celsius
-#                        mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **hist_defaults), # 2m minimum temperature
-#                        snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **hist_defaults), # snow depth
-#                        pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **hist_defaults),)
-#         derived_vars = ('T2',)
-        # load ASCII dataset with default values
-        dataset = loadASCII_Daily(title=title, resolution=resolution, grid_pattern=grid_pattern, 
-                                 vardefs=vardefs, var_pattern=var_pattern, derived_vars=derived_vars,                                  
-                                 period=period, axdefs=split_axdefs, merged_axis=merged_atts,
-                                 snow_density=snow_density, grid_defs=grid_def,)        
-        # test 
-        print(dataset)
-        print('')
-        print((dataset.precip))
-        print(("\nVariable Size in memory: {:f} MB".format(dataset.precip.data_array.nbytes/1024./1024.)))
-        # write to NetCDF
-        grdstr = '_na{:d}_{:s}'.format(resolution, file_tag)
-        ncfile = daily_folder + tsfile.format(grdstr)
-        print('')
-        writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
-                    skipUnloaded=False, feedback=True, close=True)
-        assert os.path.exists(ncfile), ncfile
-        
     
     elif mode == 'test_daily':
        
-        varlist = ['liqwatflx',]
-        xds = loadNRCan_Daily(varname='Tmin', grid=None, lautoChunk=True)
+        varlist = ['precip','T2']
+        xds = loadNRCan_Daily(varname=None, varlist=varlist, grid=None, lautoChunk=True, lskip=True)
         print(xds)
         print('')
         for varname,xv in xds.variables.items(): 

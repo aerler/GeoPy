@@ -29,6 +29,7 @@ from warnings import warn
 from geodata.misc import name_of_month, days_per_month
 from utils.nctools import add_coord, add_var
 from datasets.common import getRootFolder, loadObservations
+from datasets.misc import loadXRDataset
 from geodata.gdal import GridDefinition, addGDALtoDataset, grid_folder
 from geodata.netcdf import DatasetNetCDF
 
@@ -300,21 +301,21 @@ def checkGeoReference(xds, geoargs=None, grid=None):
 
 ## functions to load NetCDF datasets (using xarray)
 
-def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, bias_correction=None, resampling=None, lgeoref=True, 
-                     geoargs=None, chunks=None, lautoChunk=False, time_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
+def loadSnoDAS_Daily(varname=None, varlist=None, grid=None, bias_correction=None, shape=None, station=None, 
+                     resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None,  
+                     chunks=None, lautoChunk=False, time_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
-    if folder is None: folder = daily_folder
     if lgeospatial:
-        from geospatial.xarray_tools import loadXArray
         default_varlist = bc_varlists.get(bias_correction, netcdf_varlist) # only variables available with that bias correction
-        xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=bias_correction, resolution=None,
-                         filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
-                         geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
+        xds = loadXRDataset(varname=varname, varlist=varlist, dataset='SnoDAS', grid=grid, bias_correction=bias_correction, shape=shape,
+                            station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap,  
+                            lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
     else:
         warn('DEPRECATION WARNING: this is only for backwards compatibility and should not be used; use lgeospatial=True instead.')
         if time_chunks: chunks = dict(time=time_chunks) # shorthand - only for backwards compatibility
+        folder = daily_folder
         if grid: folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
         # load variables
         if bias_correction is None and 'resolution' in kwargs: bias_correction = kwargs['resolution'] # allow backdoor
@@ -554,17 +555,17 @@ if __name__ == '__main__':
 #   modes += ['monthly_normal'        ]
 #   modes += ['load_Climatology'      ]
 
-#   pntset = 'oncat'
+  pntset = 'oncat'
 #   grid = None # native
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
 #   grid = 'on1' # large Ontario domain
-  grid = 'son2' # smalller southern Ontario domain
+  grid = 'son2' # smaller southern Ontario domain
 #   grid = 'hd1' # small Quebec domain
 #   grid = 'glb1_d01'
 
-#   bias_correction = None # no bias correction
-  bias_correction = 'rfbc' # random forest bias-correction
+  bias_correction = None # no bias correction
+#   bias_correction = 'rfbc' # random forest bias-correction
 
   # variable list
   varlist = netcdf_varlist
