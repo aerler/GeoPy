@@ -8,21 +8,17 @@ as well as functions to load the converted and aggregated data.
 '''
 
 # external imports
-import os
 import os.path as osp
 import pandas as pd
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
-from warnings import warn
-
+from collections import namedtuple
 # internal imports
-from geodata.misc import name_of_month, days_per_month
-from utils.nctools import add_var
-from datasets.common import getRootFolder, loadObservations
-from geodata.gdal import GridDefinition, addGDALtoDataset, grid_folder
-from geodata.netcdf import DatasetNetCDF
-from datasets.misc import loadXRDataset
+from datasets.common import getRootFolder
+from geodata.gdal import GridDefinition
+from datasets.misc import loadXRDataset, getFolderFileName
+from geospatial.netcdf_tools import autoChunk, coerceAtts
 
 
 ## Meta-vardata
@@ -63,6 +59,11 @@ varatts_list['ERA5L'] = dict(# forcing variables
              )
 # list of variables to load
 default_varlists = {name:[atts['name'] for atts in varatts.values()] for name,varatts in varatts_list.items()}
+# list of sub-datasets/filetypes with titles
+DSNT = namedtuple(typename='Dataset', field_names=['name','interval','resolution','title',])
+dataset_attributes = dict(ERA5L = DSNT(name='ERA5L',interval='1h', resolution=0.1, title='ERA5-Land',), # downscaled land reanalysis
+                          ERA5S = DSNT(name='ERA5S',interval='1h', resolution=0.3, title='ERA5-Sfc',), # regular surface; not verified
+                          ERA5A = DSNT(name='ERA5A',interval='6h', resolution=0.3, title='ERA5-Atm',),) # regular 3D; not verified                          
 
 # settings for NetCDF-4 files
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
@@ -71,27 +72,36 @@ tsfile    = 'era5_{0:s}{1:s}{2:s}_monthly.nc' # extend with biascorrection, vari
 daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
 netcdf_filename = 'era5_{:s}_daily.nc' # extend with variable name
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
-netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,ERA5Land_size[0]/16,ERA5Land_size[1]/32))
 
 
 ## functions to load NetCDF datasets (using xarray)
 
-def loadERA5_Daily(varname=None, varlist=None, dataset='ERA5', grid=None, resolution=None, shape=None, station=None, 
-                   resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None,  
+def loadERA5_Daily(varname=None, varlist=None, dataset=None, filetype=None, grid=None, resolution=None, shape=None, station=None, 
+                   resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None, lfliplat=False,
                    chunks=None, lautoChunk=False, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily ERA5 data from NetCDF-4 files using xarray and add some projection information '''
     if not ( lxarray and lgeospatial ): 
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
+    if dataset and filetype:
+        raise ValueError()
+    elif dataset and not filetype: 
+        filetype = dataset
     if resolution is None: 
         if grid and grid[:3] in ('son','snw',): resolution = 'SON60'
         else: resolution = 'CA12' # default
     if varatts is None:
-        if grid is None and station is None and shape is None: varatts = varatts_list[dataset] # original files
+        if grid is None and station is None and shape is None: varatts = varatts_list[filetype] # original files
     default_varlist = default_varlists.get(dataset, None)
-    xds = loadXRDataset(varname=varname, varlist=varlist, dataset='ERA5', filetype=dataset, grid=grid, resolution=resolution, shape=shape,
+    xds = loadXRDataset(varname=varname, varlist=varlist, dataset='ERA5', filetype=filetype, grid=grid, resolution=resolution, shape=shape,
                         station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap,  
                         lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
+    # flip latitude dimension
+    if lfliplat and 'latitude' in xds.coords:
+        xds = xds.reindex(latitude=xds.latitude[::-1])
+    # update name and title with sub-dataset
+    xds.attrs['name'] = filetype
+    xds.attrs['title'] = dataset_attributes[filetype].title + xds.attrs['title'][len(filetype)-1:]
     return xds
 
 
@@ -112,8 +122,8 @@ default_grid = ERA5Land_grid
 loadLongTermMean       = None # climatology provided by publisher
 loadDailyTimeSeries    = loadERA5_Daily # daily time-series data
 # monthly time-series data for batch processing
-def loadTimeSeries(lxarray=False, **kwargs): return loadERA5_TS(lxarray=lxarray, **kwargs)
-loadClimatology        = loadERA5 # pre-processed, standardized climatology
+def loadTimeSeries(lxarray=False, **kwargs): raise NotImplementedError(lxarray=lxarray, **kwargs)
+loadClimatology        = None # pre-processed, standardized climatology
 loadStationClimatology = None # climatologies without associated grid (e.g. stations) 
 loadStationTimeSeries  = None # time-series without associated grid (e.g. stations)
 loadShapeClimatology   = None # climatologies without associated grid (e.g. provinces or basins) 
@@ -147,14 +157,14 @@ if __name__ == '__main__':
 #   modes += ['monthly_normal'        ]
 #   modes += ['load_Climatology'      ]
 
-  grid = None
+  grid = None; resampling = None
 
   dataset = 'ERA5L'
   resolution = 'SON10'
   
   # variable list
-  varlist = ['snow']
-#   varlist = ['snow','dswe']
+#   varlist = ['snow']
+  varlist = ['snow','dswe']
   
 #   period = (2010,2019)
   period = (1997,2018)
@@ -230,56 +240,59 @@ if __name__ == '__main__':
   
     elif mode == 'load_Daily':
        
-#         varlist = ['liqwatflx','precip','rho_snw']
-#         varname = varlist[0]
+        varlist = ['snow','dswe']
         xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=dataset, grid=grid) # 32 may be possible
         print(xds)
         print('')
-        xv = list(xds.data_vars.values())[0]
-        xv = xv.loc['2011-01-01':'2011-02-01',55:45,-80:-70]
+        xv = xds.data_vars['dswe']
+#         xv = list(xds.data_vars.values())[0]
+        xv = xv.loc['2011-06-01':'2012-06-01',:,:]
   #       xv = xv.loc['2011-01-01',:,:]
         print(xv)
         print(xv.mean())
         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
   
       
-    elif mode == 'add_variables':
+    elif mode == 'derived_variables':
       
-        lappend_master = True
         start = time.time()
             
-        # load variables
+        lexec = True
+        lappend_master = False
+        lautoChunk = True
         ts_name = 'time_stamp'
-        derived_varlist = ['dswe',]
+        dataset = 'ERA5L'
+        # load variables
+        derived_varlist = ['dswe',]; load_list = ['snow']
         varatts = varatts_list[dataset]
-        xds = loadERA5_Daily(varlist=varlist, dataset=dataset, resolution=resolution, grid=grid)
+        xds = loadERA5_Daily(varlist=load_list, filetype=dataset, resolution=resolution, grid=grid, lfliplat=False)
         # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
         print(xds)
         
         # optional slicing (time slicing completed below)
         start_date = None; end_date = None # auto-detect available data
-        start_date = '2011-01-01'; end_date = '2011-01-08'
+#         start_date = '2011-01-01'; end_date = '2011-01-08'
   
         # slice and load time coordinate
         xds = xds.loc[{'time':slice(start_date,end_date),}]
-        tsvar = xds[ts_name].load()
-            
+        if ts_name in xds:
+            tsvar = xds[ts_name].load()
+        else:
+            tax = xds.coords['time']  
+            ts_data = [pd.to_datetime(dt).strftime('%Y-%m-%d_%H:%M:%S') for dt in tax.data]
+            tsvar = xr.DataArray(data=ts_data, coords=(tax,), name='time_stamp', attrs=varatts['time_stamp'])            
         
         # loop over variables
-        for var in derived_varlist:
+        for varname in derived_varlist:
         
             # target dataset
-            lexec = True
-            var_atts = varatts[var]
-            varname = var; folder = daily_folder
-            if grid: 
-                varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
-                folder = '{}/{}'.format(folder,grid)
-            if biascorrection: varname = '{}_{}'.format(biascorrection,varname) # prepend bias correction method
-            nc_filepath = '{}/{}'.format(folder,netcdf_filename.format(varname))
-            if lappend_master and osp.exists(nc_filepath):
-                ncds = nc.Dataset(nc_filepath, mode='a')
-                ncvar3 = ncds[var]
+            lskip = False
+            folder,filename = getFolderFileName(varname=varname, dataset='ERA5', filetype=dataset, resolution=resolution, grid=grid, 
+                                                resampling=resampling, mode='daily', lcreateFolder=True)
+            filepath = '{}/{}'.format(folder,filename)
+            if lappend_master and osp.exists(filepath):
+                ncds = nc.Dataset(filepath, mode='a')
+                ncvar3 = ncds[varname]
                 ncts = ncds[ts_name]
                 nctc = ncds['time'] # time coordinate
                 # update start date for after present data
@@ -289,7 +302,7 @@ if __name__ == '__main__':
                 if start_date > end_date:
                     print(("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_date)))
                     ncds.close()
-                    lexec = False
+                    lskip = True
                 else:
                     lappend = True
                     # update slicing (should not do anything if sliced before)
@@ -299,32 +312,49 @@ if __name__ == '__main__':
             else: 
                 lappend = False
                 
-            if lexec:
+            if not lskip:
               
                 print('\n')
+                default_varatts = varatts[varname] # need to ensure netCDF compatibility
                 ## define actual computation
-                if var == 'liqwatflx':
-                    ref_var = 'snwmlt'; note = "masked/missing values have been replaced by zero"
-                    xvar = xds['snwmlt'].fillna(0) + xds['liqprec'].fillna(0) # fill missing values with zero
+                if varname == 'liqwatflx':
+                    ref_var = xds['snwmlt']; note = "masked/missing values have been replaced by zero"
+                    xvar = ref_var.fillna(0) + xds['liqprec'].fillna(0) # fill missing values with zero
                     # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
                     #       in snowmelt will mask/invalidate valid values in precip
-                elif var == 'precip':
-                    ref_var = 'liqprec'; note = "masked/missing values have been replaced by zero"
-                    xvar = xds['liqprec'].fillna(0) + xds['solprec'].fillna(0) # fill missing values with zero
+                elif varname == 'liqprec':
+                    ref_var = xds['precip']; note = "masked/missing values have been replaced by zero"
+                    xvar = ref_var.fillna(0) - xds['solprec'].fillna(0) # fill missing values with zero
                     # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
                     #       in snowmelt will mask/invalidate valid values in precip
-                elif var == 'rho_snw':
-                    ref_var = 'snow'; note = "SWE divided by snow depth, divided by 1000"
-                    xvar = xds['snow'] / xds['snowh']
+                elif varname == 'dswe':
+                    ref_var = xds['snow']; note = "Rate of Daily SWE Changes"
+                    assert ref_var.attrs['units'] == 'kg/m^2', ref_var.attrs['units']
+                    #xvar = ref_var.differentiate('time', datetime_unit='s')
+                    xvar = ref_var.diff('time', n=1) / 86400 # per second
+                    # shift time axis
+                    time_axis = xvar.coords['time'].data - np.timedelta64(1,'D')
+                    xvar = xvar.assign_coords(time=time_axis).broadcast_like(ref_var)
+                    #for i in range(len(tsvar)): print(xvar.coords['time'].data[i],xvar.data[i,:,:].mean())
+                    
+                    
                     
                 # define/copy metadata
-                xvar.rename(var)
-                xvar.attrs = xds[ref_var].attrs.copy()
-                for att in ('name','units','long_name',):
-                    xvar.attrs[att] = var_atts[att]
+                xvar.attrs = ref_var.attrs.copy()
+                xvar = xvar.rename(varname)
+                for att in ('name','units','long_name',): # don't copy scale factors etc...
+                    if att in default_varatts: xvar.attrs[att] = default_varatts[att]
+                assert xvar.attrs['name'] == xvar.name, xvar.attrs 
+                for att in list(xvar.attrs.keys()):
+                    if att.startswith('old_') or att in ('original_name','standard_name'): 
+                        del xvar.attrs[att] # does not apply anymore  
                 xvar.attrs['note'] = note
-                xvar.chunk(chunks=chunk_settings)
-                print(xvar)
+                # set chunking for operation
+                if lautoChunk:                 
+                    chunks = autoChunk(xvar.shape)
+                if chunks: 
+                    xvar = xvar.chunk(chunks=chunks)
+                print('Chunks:',xvar.chunks)
           
                 
           #       # visualize task graph
@@ -366,13 +396,21 @@ if __name__ == '__main__':
                     del xvar, ncds 
                 else:
                     # save results in new file
-                    nds = xr.Dataset({ts_name:tsvar, var:xvar,}, attrs=xds.attrs.copy())
-      #               print('\n')
-      #               print(nds)
+                    nds = xr.Dataset({ts_name:tsvar, varname:xvar,}, attrs=xds.attrs.copy())
+                    nds.coords['time'].attrs.pop('units',None) # needs to be free for use by xarray
+                    print('\n')
+                    print(nds)
+                    print(filepath)
                     # write to NetCDF
-                    var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=netcdf_settings['chunksizes'])
-                    nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                                  encoding={var:var_enc,}, compute=True)
+                    var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype)
+                    task = nds.to_netcdf(filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                                         encoding={varname:var_enc,}, compute=False)
+                    if lexec:
+                        task.compute()
+                    else:
+                        print(var_enc)
+                        print(task)
+                        task.visualize(filename=folder+'netcdf.svg')  # This file is never produced
                     del nds, xvar
                     
                 # clean up

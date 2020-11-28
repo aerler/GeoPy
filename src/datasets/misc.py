@@ -14,10 +14,10 @@ import xarray as xr
 # internal imports
 from geodata.misc import DatasetError, ArgumentError
 from datasets.common import getRootFolder
-from geospatial.xarray_tools import loadXArray
+from geospatial.xarray_tools import loadXArray, default_lat_coords, default_lon_coords
 
 def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None, bias_correction=None, grid=None, resampling=None, 
-                      mode=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None):
+                      mode=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None, **kwargs):
     ''' function to provide the folder and filename for the requested dataset parameters '''
     if mode is None:
         mode = 'clim' if period else 'daily'
@@ -111,14 +111,16 @@ def addConstantFields(xds, const_list=None, grid=None):
     if llat2D or llon2D:
         # add geographic coordinate fields 
         if grid is None: 
+            xlon = xlat = None
             # infer from lat/lon coordinates
-            if 'lon' in xds.dims and 'lat' in xds.dims:
-                xlon = xds['lon'].values; xlat = xds['lat'].values
-                lon2D,lat2D = np.meshgrid(xlon,xlat)
-                assert lon2D.shape == lat2D.shape
-                assert lon2D.shape == (len(xlat),len(xlon)), lon2D.shape
-            else:
+            for dim in xds.dims:
+                if dim in default_lon_coords: xlon = xds[dim].values
+                if dim in default_lat_coords: xlat = xds[dim].values
+            if xlon is None or xlat is None:
                 raise DatasetError("Need latitude and longitude coordinates or GridDef object to infer lat2D or lon2D.")
+            lon2D,lat2D = np.meshgrid(xlon,xlat)
+            assert lon2D.shape == lat2D.shape
+            assert lon2D.shape == (len(xlat),len(xlon)), lon2D.shape
         else:
             # get fields from griddef
             from geodata.gdal import loadPickledGridDef

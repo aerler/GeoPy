@@ -23,7 +23,7 @@ import inspect
 from datasets.common import getRootFolder, grid_folder
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
-from datasets.misc import getFolderFileName, addConstantFields
+from datasets.misc import getFolderFileName, addConstantFields, loadXRDataset
 # for georeferencing
 from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
 from geospatial.xarray_tools import addGeoReference, loadXArray, updateVariableAttrs, computeNormals
@@ -64,8 +64,9 @@ netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 
 # list of available datasets/collections
 DSNT = namedtuple(typename='Dataset', field_names=['name','interval','start_date','end_date',])
-dataset_attributes = dict(SnoDAS  = DSNT(name='SnoDAS',interval='1D', start_date=None, end_date=None,  ),                          
-                          NRCan   = DSNT(name='NRCan',  interval='1D', start_date=None, end_date=None, ), 
+dataset_attributes = dict(SnoDAS  = DSNT(name='SnoDAS',interval='1D', start_date='2011-01-01', end_date=None,  ),                          
+                          NRCan   = DSNT(name='NRCan',  interval='1D', start_date=None, end_date='2017-12-31', ),
+                          ERA5L   = DSNT(name='ERA5L',  interval='1D', start_date='1997-01-01', end_date=None, ), 
                           #CaSPAr  = DSNT(name='CaSPAr',  interval='6H', start_date='2017-09-11T12', end_date='2019-12-30T12', ),
                           )
 dataset_list = list(dataset_attributes.keys())
@@ -81,7 +82,7 @@ default_varlist = [varname for varname in varlist if varname not in default_data
 ## functions to load NetCDF datasets (using xarray)
 
 
-def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, dataset_args=None, time_slice=None, 
+def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_index=None, dataset_args=None, time_slice=None, 
                             compat='override', join='inner', fill_value=None, ldebug=False, **kwargs):
     ''' function to load and merge data from different high-resolution datasets (e.g. SnoDAS or NRCan) using xarray;
         typical dataset-agnostic arguments: grid=str, lgeoref=True, geoargs=dict, chunks=dict, lautoChunk=False, 
@@ -93,17 +94,22 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
         varlist = [varname] # load a single variable
     elif varlist is None:
         varlist = list(varatts.keys())
-    if dataset_args is None: dataset_args = dict()# avoid errors
+    if dataset_args is None: dataset_args = dict() # avoid errors
     # assemble dataset list and arguments
     if isinstance(varlist,dict):
         dataset_varlists = varlist
+    elif isinstance(varlist,(list,tuple)):
+        if dataset:
+            dataset_varlists = {dataset:varlist}
+        else:
+            if dataset_index is None: dataset_index = default_dataset_index.copy()
+            dataset_varlists = dict()
+            for varname in varlist:
+                ds_name = dataset_index.get(varname,dataset_name) # default is native (global variable)
+                if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname] 
+                else: dataset_varlists[ds_name].append(varname)
     else:
-        if dataset_index is None: dataset_index = default_dataset_index.copy()
-        dataset_varlists = dict()
-        for varname in varlist:
-            ds_name = dataset_index.get(varname,dataset_name) # default is native (global variable)
-            if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname] 
-            else: dataset_varlists[ds_name].append(varname)
+        raise TypeError(varlist)
     const_list = dataset_varlists.pop('const', [])
     ## load datasets
     ds_list = []
@@ -116,10 +122,10 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
         if dataset in dataset_args: ds_args.update(dataset_args[dataset])
         if dataset.lower() == dataset_name.lower():
             # native MergedForcing
-            ds_args.update(folder=daily_folder, filename_pattern=netcdf_filename)
+            ds_args.update(dataset=dataset)
             argslist = ['grid', ] # specific arguments for merged dataset variables
             if varlist is None: varlist = default_varlist
-            loadFunction = loadXArray
+            loadFunction = loadXRDataset
         else:
             # daily data from other datasets
             ds_mod = import_module('datasets.{0:s}'.format(dataset)) # import dataset module
@@ -317,8 +323,8 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
-#   work_loads += ['compute_derived']
-  work_loads += ['load_Daily']
+  work_loads += ['compute_derived']
+#   work_loads += ['load_Daily']
 #   work_loads += ['monthly_mean'          ]
 #   work_loads += ['load_TimeSeries'      ]
 #   work_loads += ['monthly_normal'        ]
@@ -499,13 +505,15 @@ if __name__ == '__main__':
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
 #         varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
-        varlist = {'NRCan':None, 'const':None}
+#         varlist = {'NRCan':None, 'const':None}
+        varlist = {'ERA5':['dswe','snow'], 'const':None}; dataset_args = dict(ERA5=dict(dataset='ERA5L', lfliplat=True))
+        grid = None; resolution = 'SON10'
 #         varlist = dataset_varlist
 #         varlist = {dataset:None for dataset in ['NRCan',dataset_name, 'const']}
 #         varlist = default_varlist
 #         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
 #         varlist = {'NRCan':['Tmin','Tmax'], 'const':['lat2D']}
-        dataset_args = None
+#         dataset_args = None
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, 
@@ -569,27 +577,30 @@ if __name__ == '__main__':
 #         derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
 #         derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
-        derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
+#         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
+        derived_varlist = ['liqwatflx']; load_list = dict(NRCan=['precip'], ERA5=['dswe'])
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
         bias_correction = 'rfbc'
 #         grid = 'son2'; resolution = 'CA12'
 #         grid = None; resolution = 'SON60'
-        grid = 'son2'; resolution = 'SON60'; load_chunks = dict(time=8, x=59, y=59)
+#         grid = 'son2'; resolution = 'SON60'; load_chunks = dict(time=8, x=59, y=59)
+        grid = 'snw2'; resolution = None; dataset_args = dict(NRCan = dict(resolution='SON60'),
+                                                              ERA5  = dict(resolution='SON10', filetype='ERA5L'),)
         
         
         # optional slicing (time slicing completed below)
 #         start_date = None; end_date = None # auto-detect available data
-        start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
+#         start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
 #         start_date = '2011-01-01'; end_date = '2011-04-01'
 #         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
-#         start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
+        start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
         time_slice = (start_date,end_date) # slice time
-        dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction=bias_correction, 
+        dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction=bias_correction, dataset_args=dataset_args,
                                           resampling=None, time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
 #         dataset = dataset.unify_chunks()
         
@@ -705,9 +716,13 @@ if __name__ == '__main__':
                 ref_var = dataset['precip']
                 note = 'total precip (NRCan) - SWE changes from RFBC SnoDAS'
                 assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
-                swe = dataset['snow'].fillna(0) # just pretend there is no snow...
-                assert swe.attrs['units'] == 'kg/m^2', swe.attrs['units']
-                dswe = swe.differentiate('time', datetime_unit='s')
+                if 'dswe' in dataset: 
+                    dswe = dataset['dswe'].fillna(0)
+                    assert dswe.attrs['units'] == 'kg/m^2/s', dswe.attrs['units']
+                else:
+                    swe = dataset['snow'].fillna(0) # just pretend there is no snow...
+                    assert swe.attrs['units'] == 'kg/m^2', swe.attrs['units']
+                    dswe = swe.differentiate('time', datetime_unit='s')
                 xvar = ref_var - dswe
                 xvar = xvar.clip(min=0,max=None) # remove negative values
             else:
