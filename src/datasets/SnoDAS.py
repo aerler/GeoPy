@@ -815,13 +815,14 @@ if __name__ == '__main__':
   
     elif mode == 'load_Daily':
        
-        time_chunks = 32 # 32 may be possible
+        time_chunks = 1 # 32 may be possible
         chunks = netcdf_settings['chunksizes']
         chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
             
   #       varlist = netcdf_varlist
 #         varlist = ['liqwatflx','precip','rho_snw']; varname = varlist[0]
         varlist = None; grid = 'son2'; bias_correction = 'rfbc'; varname = 'snow'
+#         varlist = None; grid = None; bias_correction = None; varname = 'snow'
         xds = loadSnoDAS_Daily(varlist=varlist, bias_correction=bias_correction, grid=grid) # 32 may be possible
         print(xds)
         print('')

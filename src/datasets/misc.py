@@ -146,7 +146,7 @@ def addConstantFields(xds, const_list=None, grid=None):
 def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_correction=None, resolution=None, 
                   period=None, shape=None, station=None, mode='daily', filetype=None, resampling=None, 
                   varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,  
-                  lgeoref=True, geoargs=None, chunks=None, lautoChunk=False, lskip=False, **kwargs):
+                  lgeoref=True, geoargs=None, chunks=True, lautoChunk=False, lskip=False, **kwargs):
     ''' load data from standardized NetCDF files into an xarray Dataset '''
     # first, get folder and filename pattern
     folder,filename = getFolderFileName(varname='{var:s}', dataset=dataset, filetype=filetype, resolution=resolution, grid=grid,

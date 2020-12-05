@@ -79,7 +79,7 @@ netcdf_settings = dict(chunksizes=(8,ERA5Land_size[0]/16,ERA5Land_size[1]/32))
 
 def loadERA5_Daily(varname=None, varlist=None, dataset=None, filetype=None, grid=None, resolution=None, shape=None, station=None, 
                    resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None, lfliplat=False,
-                   chunks=None, lautoChunk=False, lxarray=True, lgeospatial=True, **kwargs):
+                   chunks=True, lautoChunk=False, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily ERA5 data from NetCDF-4 files using xarray and add some projection information '''
     if not ( lxarray and lgeospatial ): 
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
@@ -137,15 +137,13 @@ if __name__ == '__main__':
   
   #print('xarray version: '+xr.__version__+'\n')
   xr.set_options(keep_attrs=True)
-        
 
-#   from dask.distributed import Client, LocalCluster
-#   # force multiprocessing (4 cores)
-#   cluster = LocalCluster(n_workers=4, diagnostics_port=18787)
-#   client = Client(cluster)
+  from dask.distributed import Client, LocalCluster
+  # force multiprocessing (4 cores)
+#   cluster = LocalCluster(n_workers=2, memory_limit='1GB')
+  cluster = LocalCluster(n_workers=4, memory_limit='6GB')
+  client = Client(cluster)
 
-#   from multiprocessing.pool import ThreadPool
-#   dask.set_options(pool=ThreadPool(4))
 
   modes = []
 #   modes += ['load_Point_Climatology']
@@ -160,14 +158,16 @@ if __name__ == '__main__':
   grid = None; resampling = None
 
   dataset = 'ERA5L'
-  resolution = 'SON10'
+#   resolution = 'SON10'
+  resolution = 'NA10'
   
   # variable list
-#   varlist = ['snow']
-  varlist = ['snow','dswe']
+  varlist = ['snow']
+#   varlist = ['snow','dswe']
   
 #   period = (2010,2019)
-  period = (1997,2018)
+#   period = (1997,2018)
+#   period = (1980,2018)
 
   # loop over modes 
   for mode in modes:
@@ -240,14 +240,15 @@ if __name__ == '__main__':
   
     elif mode == 'load_Daily':
        
-        varlist = ['snow','dswe']
-        xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=dataset, grid=grid) # 32 may be possible
+        #varlist = ['snow','dswe']
+        xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=dataset, grid=grid, 
+                             lautoChunk=False, lgeoref=True)
         print(xds)
-        print('')
-        xv = xds.data_vars['dswe']
-#         xv = list(xds.data_vars.values())[0]
+#         print('')
+        xv = xds.data_vars['snow']
+# #         xv = list(xds.data_vars.values())[0]
         xv = xv.loc['2011-06-01':'2012-06-01',:,:]
-  #       xv = xv.loc['2011-01-01',:,:]
+#   #       xv = xv.loc['2011-01-01',:,:]
         print(xv)
         print(xv.mean())
         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
@@ -260,6 +261,7 @@ if __name__ == '__main__':
         lexec = True
         lappend_master = False
         lautoChunk = True
+        chunks = None
         ts_name = 'time_stamp'
         dataset = 'ERA5L'
         # load variables
