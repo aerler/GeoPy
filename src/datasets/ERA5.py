@@ -133,16 +133,18 @@ loadShapeTimeSeries    = None # time-series without associated grid (e.g. provin
 ## abuse for testing
 if __name__ == '__main__':
 
-  import dask, time, gc 
+  import time, gc 
   
   #print('xarray version: '+xr.__version__+'\n')
   xr.set_options(keep_attrs=True)
 
-  from dask.distributed import Client, LocalCluster
-  # force multiprocessing (4 cores)
+# import dask
+#   from dask.distributed import Client, LocalCluster
+#   # force multiprocessing (4 cores)
 #   cluster = LocalCluster(n_workers=2, memory_limit='1GB')
-  cluster = LocalCluster(n_workers=4, memory_limit='6GB')
-  client = Client(cluster)
+#   cluster = LocalCluster(n_workers=4, memory_limit='6GB')
+#   cluster = LocalCluster(n_workers=1)
+#   client = Client(cluster)
 
 
   modes = []
@@ -260,14 +262,15 @@ if __name__ == '__main__':
             
         lexec = True
         lappend_master = False
-        lautoChunk = True
-        chunks = None
+        lautoChunk = False
+        chunks = dict(time=8, latitude=61, longitude=62)
         ts_name = 'time_stamp'
         dataset = 'ERA5L'
         # load variables
         derived_varlist = ['dswe',]; load_list = ['snow']
         varatts = varatts_list[dataset]
-        xds = loadERA5_Daily(varlist=load_list, filetype=dataset, resolution=resolution, grid=grid, lfliplat=False)
+        xds = loadERA5_Daily(varlist=load_list, filetype=dataset, resolution=resolution, grid=grid, 
+                             lautoChunk=lautoChunk, chunks=chunks, lfliplat=False)
         # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
         print(xds)
         
@@ -355,6 +358,9 @@ if __name__ == '__main__':
                 if lautoChunk:                 
                     chunks = autoChunk(xvar.shape)
                 if chunks: 
+                    if isinstance(chunks,dict):
+                        chunks = tuple(chunks[dim] for dim in xvar.dims)
+                        
                     xvar = xvar.chunk(chunks=chunks)
                 print('Chunks:',xvar.chunks)
           

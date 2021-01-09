@@ -26,7 +26,7 @@ from geodata.gdal import addGDALtoDataset
 from datasets.misc import getFolderFileName, addConstantFields, loadXRDataset
 # for georeferencing
 from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
-from geospatial.xarray_tools import addGeoReference, loadXArray, updateVariableAttrs, computeNormals
+from geospatial.xarray_tools import addGeoReference, updateVariableAttrs, computeNormals
 
 ## Meta-vardata
 
@@ -43,6 +43,9 @@ axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), #
 axes_varlist = axes_varatts.keys()
 # merged/mixed/derived variables
 varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
+               liqwatflx_sno = dict(name='liqwatflx_sno', units='kg/m^2/s', long_name='LWF (SnoDAS)'),
+               liqwatflx_ne5 = dict(name='liqwatflx_ne5', units='kg/m^2/s', long_name='LWF (ERA5-Land)'),
+               pet = dict(name='pet', units='kg/m^2/s', long_name='Potential Evapotranspiration'),
                pet_pt = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)'),
                pet_pts = dict(name='pet_pts', units='kg/m^2/s', long_name='PET (Priestley-Taylor, approx. LW)'),
                pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
@@ -284,8 +287,8 @@ clim_file_pattern = avgfile # filename pattern: grid and period
 data_folder       = avgfolder # folder for user data
 grid_def  = {'':None} # no special name, since there is only one...
 LTM_grids = [] # grids that have long-term mean data 
-TS_grids  = ['','rfbc'] # grids that have time-series data
-grid_res  = {res:0.00833333333333333 for res in TS_grids} # no special name, since there is only one...
+TS_grids  = ['','CA12','SON60'] # grids that have time-series data
+grid_res  = {'':0.01,'CA12':1./12.,'SON60':1./60.}
 default_grid = None
 # functions to access specific datasets
 loadLongTermMean       = None # climatology provided by publisher
@@ -332,10 +335,10 @@ if __name__ == '__main__':
 
   # some settings
 #   resolution = 'CA12'
-  resolution = 'SON60'; process_dataset = 'NRCan'
-  grid = 'snw2'
+  resolution = 'SON60'; process_dataset = 'MergedForcing'
+#   grid = 'snw2'
 #   grid = 'hd1' # small Quebec grid
-#   grid = 'son2' # high-res Southern Ontario
+  grid = 'son2' # high-res Southern Ontario
 #   grid = 'on1'
   pntset = 'sonshp'
   
@@ -375,7 +378,7 @@ if __name__ == '__main__':
     elif mode == 'load_Climatology':
        
         lxarray = False
-        varname = 'T2'
+        varname = 'pet_pts'
 #         process_dataset = 'NRCan'; period = (1997,2018); kwargs = dict()
         period = (2011,2018); kwargs = dict()
 #         period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname]) # load regular NRCan normals
@@ -392,10 +395,10 @@ if __name__ == '__main__':
   
         # optional slicing (time slicing completed below)
 #         start_date = '2011-01'; end_date = '2011-12'; varlist = None
-#         start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
-        start_date = None; end_date = None; varlist = None
+        start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
+#         start_date = None; end_date = None; varlist = None
 #         varlist = ['T2','time_stamp']
-        process_dataset = 'NRCan'; resolution = 'SON60'
+#         process_dataset = 'NRCan'; resolution = 'SON60'
         
         # start operation
         start = time.time()
@@ -457,8 +460,8 @@ if __name__ == '__main__':
 #         varlist = ['T2']
         
         # process just NRCan dataset
-        varlist = {'NRCan':None, 'const':None}
-        process_dataset = 'NRCan'; resolution = 'SON60'
+#         varlist = {'NRCan':None, 'const':None}
+#         process_dataset = 'NRCan'; resolution = 'SON60'
         
 #         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True,
 #                                       resolution=resolution, lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
@@ -559,6 +562,7 @@ if __name__ == '__main__':
         
         # settings
         lexec = True
+        resolution = None; bias_correction = None; dataset_args = None
 #         lexec = False
         load_chunks = None; lautoChunkLoad = True  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
@@ -577,15 +581,18 @@ if __name__ == '__main__':
 #         derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
 #         derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
-#         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
-        derived_varlist = ['liqwatflx']; load_list = dict(NRCan=['precip'], ERA5=['dswe'])
+#         derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['snow']); bias_correction = 'rfbc'
+        derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip'], ERA5=['dswe'])
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
-        bias_correction = 'rfbc'
+#         bias_correction = 'rfbc'
 #         grid = 'son2'; resolution = 'CA12'
 #         grid = None; resolution = 'SON60'
 #         grid = 'son2'; resolution = 'SON60'; load_chunks = dict(time=8, x=59, y=59)
-        grid = 'snw2'; resolution = None; dataset_args = dict(NRCan = dict(resolution='SON60'),
-                                                              ERA5  = dict(resolution='SON10', filetype='ERA5L'),)
+#         grid = 'son2'
+#         grid = 'snw2'; load_chunks = dict(time=8, x=44, y=55)
+        grid = None; load_chunks = dict(time=8, lon=63, lat=64)
+        dataset_args = dict(NRCan=dict(resolution='CA12', grid=None,), 
+                            ERA5=dict(resolution='NA10', grid='ca12', filetype='ERA5L'), )
         
         
         # optional slicing (time slicing completed below)
@@ -595,13 +602,15 @@ if __name__ == '__main__':
 #         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
-        start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
+#         start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
+        start_date = '1981-01-01'; end_date = '2018-01-01' # apparently not inclusive... 
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
         time_slice = (start_date,end_date) # slice time
-        dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction=bias_correction, dataset_args=dataset_args,
-                                          resampling=None, time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
+        dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction=bias_correction, 
+                                          dataset_args=dataset_args, resampling=None, 
+                                          time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
 #         dataset = dataset.unify_chunks()
         
         
@@ -711,18 +720,27 @@ if __name__ == '__main__':
                 kwargs = dict(climT2='climT2', lat=None, l365=False, p='center', lxarray=True)      
                 xvar = xr.map_blocks(computePotEvapTh, dataset, kwargs=kwargs)
                 print(xvar)
-            elif varname == 'liqwatflx':
+            elif varname == 'liqwatflx_sno': # SnoDAS
                 default_varatts = varatts[varname]
                 ref_var = dataset['precip']
-                note = 'total precip (NRCan) - SWE changes from RFBC SnoDAS'
                 assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
-                if 'dswe' in dataset: 
-                    dswe = dataset['dswe'].fillna(0)
-                    assert dswe.attrs['units'] == 'kg/m^2/s', dswe.attrs['units']
-                else:
-                    swe = dataset['snow'].fillna(0) # just pretend there is no snow...
-                    assert swe.attrs['units'] == 'kg/m^2', swe.attrs['units']
-                    dswe = swe.differentiate('time', datetime_unit='s')
+                swe = dataset['snow'].fillna(0) # just pretend there is no snow...
+                assert swe.attrs['units'] == 'kg/m^2', swe.attrs['units']
+                dswe = swe.differentiate('time', datetime_unit='s')
+                swe_name = 'SnoDAS'
+                if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
+                note = 'total precip (NRCan) - SWE changes from ' + swe_name
+                xvar = ref_var - dswe
+                xvar = xvar.clip(min=0,max=None) # remove negative values
+            elif varname == 'liqwatflx_ne5': # ER5-Land
+                default_varatts = varatts[varname]
+                ref_var = dataset['precip']
+                assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
+                dswe = dataset['dswe'].fillna(0)
+                assert dswe.attrs['units'] == 'kg/m^2/s', dswe.attrs['units']
+                swe_name = 'ERA5-Land'
+                if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
+                note = 'total precip (NRCan) - SWE changes from ' + swe_name
                 xvar = ref_var - dswe
                 xvar = xvar.clip(min=0,max=None) # remove negative values
             else:

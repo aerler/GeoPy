@@ -679,7 +679,7 @@ loadShapeTimeSeries  = loadNRCan_ShpTS # time-series without associated grid (e.
 
 if __name__ == '__main__':
   
-    mode = 'test_daily'
+#     mode = 'test_daily'
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
@@ -687,7 +687,7 @@ if __name__ == '__main__':
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
 #     mode = 'convert_Daily'
-#     mode = 'convert_to_netcdf'
+    mode = 'convert_to_netcdf'
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
@@ -714,26 +714,34 @@ if __name__ == '__main__':
         
         # parameters for daily ascii
 #         varlist = ['pcp',]
-#         varlist = day12_vardefs.keys()
 #         varlist = ['pcp', 'maxt', 'mint'] # order of importance...
+        varlist = ['pcp',] # complete job
+#         varlist = day12_vardefs.keys()
+        vardefs = day12_vardefs
+        grid_res = 'CA12'
 #         varlist = ['pcp', 'maxt', 'mint', 'pcp_adj'] # order of importance...
-        varlist = ['maxt', 'mint'] # recalculate
-        vardefs = son60_vardefs
-        grid_res = 'SON60'
+#         varlist = ['maxt', 'mint'] # recalculate
+#         vardefs = son60_vardefs
+#         grid_res = 'SON60'
         griddef = grid_def[grid_res]
         # parameters for rasters
+        start_date = '1950-01-01'; end_date = '2017-12-31'; sampling = 'D'; loverwrite = True
+#         start_date = '2015-12-01'; end_date = '2016-01-31'; sampling = 'D'; loverwrite = True        
 #         start_date = '2011-01-01'; end_date = '2011-02-01'; sampling = 'D'; loverwrite = True
 #         start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
 #         start_date = '2000-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
-        start_date = '1997-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
+#         start_date = '1997-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
 #         start_date = '2016-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
         raster_folder = root_folder + grid_res+'_Daily/'
         def raster_path_func(datetime, varname, **varatts):
             ''' determine path to appropriate raster for given datetime and variable'''
-            day = datetime.dayofyear
+            day = datetime.dayofyear; year = datetime.year
             if not datetime.is_leap_year and day >= 60: day += 1
             altname = varatts.get('alt_name',varname)
-            path = '{VAR:s}/{YEAR:04d}/{ALT:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, ALT=altname, DAY=day)
+            if varname in ('maxt','mint') and year in (2016,2017):
+                path = '{VAR:s}/{YEAR:04d}/{ALT:s}/{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=year, VAR=varname, ALT=altname, DAY=day)
+            else:
+                path = '{VAR:s}/{YEAR:04d}/{ALT:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=year, VAR=varname, ALT=altname, DAY=day)
             return path
         # NetCDF definitions
         ds_atts = dict(start_date=start_date, end_date=end_date, sampling=sampling)

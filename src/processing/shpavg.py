@@ -197,7 +197,7 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 8; ldebug = False # for quick computations
+    NP = 4; ldebug = False # for quick computations
     modes = ('time-series','climatology')
 #     modes = ('climatology',)
 #     modes = ('time-series',) 
@@ -216,11 +216,11 @@ if __name__ == '__main__':
     lLTM = True 
     datasets = []; resolutions = None; unity_grid = None
 #     grid = 'on1' # grid parameter to load datasets
-#     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'], 'NRCan':'NA12'}
+    resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'], 'NRCan':'NA12'}
 #     datasets = []
 #     datasets += ['NRCan',]; lLTM = False; resolutions = dict(NRCan='na60_precip')
-    datasets += ['NRCan']; periods = [(1980,2010),(1970,2000),]; lLTM = False
-    resolutions = dict(NRCan='na12_maritime')
+#     datasets += ['NRCan']; periods = [(1980,2010),(1970,2000),]; lLTM = False
+#     resolutions = dict(NRCan='na12_maritime')
 #     datasets += ['SnoDAS',]; periods = [(2011,2019),]; lLTM = False
 #     varlist =  ['liqprec','solprec','snow','snowh','Tsnow','snwmlt','evap_snow','evap_blow','dswe'] # SnoDAS binary + delta SWE
 #     varlist =  ['snow','dswe']; resolutions['SnoDAS'] = ['rfbc'] # SnoDAS RFBC (only SWE and delta SWE)
@@ -229,7 +229,8 @@ if __name__ == '__main__':
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
 #     datasets += ['Unity']; periods = [15,30] 
-#     datasets += ['MergedForcing']; periods = [(2011,2018)]; grid = 'son2'
+    datasets += ['MergedForcing']; periods = [(2011,2018)]
+    grid = 'son2'; resolutions['MergedForcing'] = ['SON60']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -308,7 +309,7 @@ if __name__ == '__main__':
 #     shape_name = 'oncat' # Ontario catchment areas for gauges
 #     shapes['gauges'] = ['02BB003', '02EA011', '02GE003', '02EB008', '02EB011', '02GB001', '02LB005'] # selected gauges for Fraser's project (plus Grand River and South Nation)
     shape_name = 'sonshp' # Great Lakes
-    shapes['son_watersheds'] = None # the Great Lakes of North America
+    shapes['son_watersheds'] = None # watersheds in our southern Ontario HGSRT platform
     shapes['basins'] = ['SON','SNW',] # river basins (in Canada) from WSC module
  
   ## process arguments    
