@@ -18,7 +18,7 @@ from collections import namedtuple
 from datasets.common import getRootFolder
 from geodata.gdal import GridDefinition
 from datasets.misc import loadXRDataset, getFolderFileName
-from geospatial.netcdf_tools import autoChunk, coerceAtts
+from geospatial.netcdf_tools import autoChunk
 
 
 ## Meta-vardata
@@ -40,22 +40,19 @@ SON10_grid = GridDefinition(name=dataset_name, projection=None, geotransform=ERA
 
 varatts_list = dict()
 # attributes of variables in ERA5-Land
-varatts_list['ERA5L'] = dict(# forcing variables
-             tp   = dict(name='precip', units='kg/m^2/s',scalefactor=1./3.6, long_name='Total Precipitation'), # units of meters water equiv. / hour
-#              solprec = dict(name='solprec',units='kg/m^2/s',scalefactor=1./3.6, long_name='Solid Precipitation'),
+varatts_list['ERA5L'] = dict(# forcing/flux variables
+             tp   = dict(name='precip', units='kg/m^2/s',scalefactor=1./86400., long_name='Total Precipitation'), # units of meters water equiv. / day
+             pev  = dict(name='pet_era5', units='kg/m^2/s',scalefactor=1./86400., long_name='Potential Evapotranspiration'), # units of meters water equiv. / day
              # state variables
              sd   = dict(name='snow',  units='kg/m^2', scalefactor=1.e3, long_name='Snow Water Equivalent'), # units of meters water equivalent
-             # diagnostic variables
-#              snwmlt    = dict(name='snwmlt',   units='kg/m^2/s',scalefactor=1./3.6, long_name='Snow Melt Runoff at the Base of the Snow Pack'),
-#              evap_snow = dict(name='evap_snow',units='kg/m^2/s',scalefactor=1./3.6, long_name='Sublimation from the Snow Pack'),
              # axes (don't have their own file)
              time_stamp = dict(name='time_stamp', units='', long_name='Time Stamp'), # readable time stamp (string)
              time = dict(name='time', units='days', long_name='Days'), # time coordinate
              lon  = dict(name='lon', units='deg', long_name='Longitude'), # geographic longitude
              lat  = dict(name='lat', units='deg', long_name='Latitude'), # geographic latitude
              # derived variables
-             dswe = dict(name='dswe',units='kg/m^2/s',scalefactor=1., long_name='SWE Changes'),
-#              liqwatflx = dict(name='liqwatflx',units='kg/m^2/s',scalefactor=1., long_name='Liquid Water Flux'),
+             dswe = dict(name='dswe',units='kg/m^2/s', long_name='SWE Changes'),
+             liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
              )
 # list of variables to load
 default_varlists = {name:[atts['name'] for atts in varatts.values()] for name,varatts in varatts_list.items()}
@@ -161,11 +158,12 @@ if __name__ == '__main__':
 
   dataset = 'ERA5L'
 #   resolution = 'SON10'
-  resolution = 'NA10'
+#   resolution = 'NA10'
+  resolution = 'AU10'
   
   # variable list
-  varlist = ['snow']
-#   varlist = ['snow','dswe']
+#   varlist = ['snow']
+  varlist = ['snow','dswe','precip','pet_era5','liqwatflx']
   
 #   period = (2010,2019)
 #   period = (1997,2018)
@@ -263,11 +261,13 @@ if __name__ == '__main__':
         lexec = True
         lappend_master = False
         lautoChunk = False
-        chunks = dict(time=8, latitude=61, longitude=62)
+        if resolution == 'NA10': chunks = dict(time=8, latitude=61, longitude=62)
+        elif resolution == 'AU10': chunks = dict(time=8, latitude=59, longitude=62)
         ts_name = 'time_stamp'
         dataset = 'ERA5L'
         # load variables
-        derived_varlist = ['dswe',]; load_list = ['snow']
+#         derived_varlist = ['dswe',]; load_list = ['snow']
+        derived_varlist = ['liqwatflx',]; load_list = ['dswe', 'precip']
         varatts = varatts_list[dataset]
         xds = loadERA5_Daily(varlist=load_list, filetype=dataset, resolution=resolution, grid=grid, 
                              lautoChunk=lautoChunk, chunks=chunks, lfliplat=False)
@@ -323,13 +323,8 @@ if __name__ == '__main__':
                 default_varatts = varatts[varname] # need to ensure netCDF compatibility
                 ## define actual computation
                 if varname == 'liqwatflx':
-                    ref_var = xds['snwmlt']; note = "masked/missing values have been replaced by zero"
-                    xvar = ref_var.fillna(0) + xds['liqprec'].fillna(0) # fill missing values with zero
-                    # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
-                    #       in snowmelt will mask/invalidate valid values in precip
-                elif varname == 'liqprec':
                     ref_var = xds['precip']; note = "masked/missing values have been replaced by zero"
-                    xvar = ref_var.fillna(0) - xds['solprec'].fillna(0) # fill missing values with zero
+                    xvar = ref_var.fillna(0) - xds['dswe'].fillna(0) # fill missing values with zero
                     # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
                     #       in snowmelt will mask/invalidate valid values in precip
                 elif varname == 'dswe':
@@ -339,9 +334,7 @@ if __name__ == '__main__':
                     xvar = ref_var.diff('time', n=1) / 86400 # per second
                     # shift time axis
                     time_axis = xvar.coords['time'].data - np.timedelta64(1,'D')
-                    xvar = xvar.assign_coords(time=time_axis).broadcast_like(ref_var)
-                    #for i in range(len(tsvar)): print(xvar.coords['time'].data[i],xvar.data[i,:,:].mean())
-                    
+                    xvar = xvar.assign_coords(time=time_axis).broadcast_like(ref_var)                    
                     
                     
                 # define/copy metadata
@@ -359,8 +352,7 @@ if __name__ == '__main__':
                     chunks = autoChunk(xvar.shape)
                 if chunks: 
                     if isinstance(chunks,dict):
-                        chunks = tuple(chunks[dim] for dim in xvar.dims)
-                        
+                        chunks = tuple(chunks[dim] for dim in xvar.dims)                        
                     xvar = xvar.chunk(chunks=chunks)
                 print('Chunks:',xvar.chunks)
           
