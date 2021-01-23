@@ -797,7 +797,7 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
     # create a DataArray/Variable instance
     atts = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)')
     # record options
-    atts['l365'] = int(l365); atts['time_offset'] = int(time_offset); atts['p'] = int(p)
+    atts['l365'] = int(l365); atts['time_offset'] = int(time_offset); atts['p'] = str(p)
     if lxarray:
         if pet.size == 0: pet = None
         var = xr.DataArray(coords=T2.coords, data=pet, name=atts['name'], attrs=atts)

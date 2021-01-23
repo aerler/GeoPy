@@ -333,20 +333,22 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
-#   work_loads += ['compute_derived']
+  work_loads += ['compute_derived']
 #   work_loads += ['load_Daily']
 #   work_loads += ['monthly_mean'          ]
 #   work_loads += ['load_TimeSeries'      ]
-  work_loads += ['monthly_normal'        ]
-  work_loads += ['load_Climatology'      ]
+#   work_loads += ['monthly_normal'        ]
+#   work_loads += ['load_Climatology'      ]
 
   # some settings
-#   resolution = 'CA12'
-#   resolution = 'SON60'; process_dataset = 'MergedForcing'
+  resolution = 'CA12'
+#   resolution = 'SON60'
+#   process_dataset = 'MergedForcing'
+  process_dataset = 'NRCan'
   
-  process_dataset = 'ERA5'
-  resolution = 'AU10'; filetype = 'ERA5L'
-  dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
+#   process_dataset = 'ERA5'
+#   resolution = 'AU10'; filetype = 'ERA5L'
+#   dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
   
   grid = None; bias_correction = None
 #   grid = 'snw2'
@@ -601,7 +603,7 @@ if __name__ == '__main__':
 #         lexec = False
         load_chunks = None; lautoChunkLoad = True  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
-        # N.B.: 'lautChunk' is necessary for *loading* data in chunks - otherwise it loads the whole array at once...
+        # N.B.: 'lautoChunk' is necessary for *loading* data in chunks - otherwise it loads the whole array at once...
         #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
@@ -612,12 +614,12 @@ if __name__ == '__main__':
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
 #         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
-#         derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
+        derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
 #         derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
 #         derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['snow']); bias_correction = 'rfbc'
-        derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip'], ERA5=['dswe'])
+#         derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip'], ERA5=['dswe'])
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
 #         bias_correction = 'rfbc'
 #         grid = 'son2'; resolution = 'CA12'
@@ -625,20 +627,21 @@ if __name__ == '__main__':
 #         grid = 'son2'; resolution = 'SON60'; load_chunks = dict(time=8, x=59, y=59)
 #         grid = 'son2'
 #         grid = 'snw2'; load_chunks = dict(time=8, x=44, y=55)
+        lautoChunkLoad = False
         grid = None; load_chunks = dict(time=8, lon=63, lat=64)
         dataset_args = dict(NRCan=dict(resolution='CA12', grid=None,), 
                             ERA5=dict(resolution='NA10', grid='ca12', filetype='ERA5L'), )
         
         
         # optional slicing (time slicing completed below)
-#         start_date = None; end_date = None # auto-detect available data
+        start_date = None; end_date = None # auto-detect available data
 #         start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
 #         start_date = '2011-01-01'; end_date = '2011-04-01'
 #         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
 #         start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
-        start_date = '1981-01-01'; end_date = '2018-01-01' # apparently not inclusive... 
+#         start_date = '1981-01-01'; end_date = '2018-01-01' # apparently not inclusive... 
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
@@ -727,7 +730,7 @@ if __name__ == '__main__':
                 from processing.newvars import computePotEvapHog
                 default_varatts = varatts[varname]; ref_var = dataset['Tmax']
                 note = 'PET based on the Hogg (1997) method using only Tmin and Tmax'
-                kwargs = dict(lmeans=False, lq2=None, zs=150, lxarray=True)      
+                kwargs = dict(lmeans=False, lq2=False, zs=400, lxarray=True) # average elevation of Canada is 487 m
                 xvar = xr.map_blocks(computePotEvapHog, dataset, kwargs=kwargs)
             elif varname == 'pet_har' or varname == 'pet_haa':                
                 from processing.newvars import computePotEvapHar
@@ -741,14 +744,23 @@ if __name__ == '__main__':
             elif varname == 'pet_th':
                 default_varatts = varatts[varname]; ref_var = dataset['T2']
                 # load climatological temperature from NRCan
-                if resolution == 'CA12':
-                    cds = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12', 
-                                            grid=grid, lxarray=True, lgeoref=False)
-                elif resolution == 'SON60':
-                    cds = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1997,2018), resolution='SON60', 
-                                            grid=grid, lxarray=True, lgeoref=False)
-                clim_chunks = {dim:cnk for dim,cnk in zip(ref_var.dims,ref_var.encoding['chunksizes']) if dim in (ref_var.xlon,ref_var.ylat)}
-                dataset['climT2'] = cds['T2'].chunk(chunks=clim_chunks).rename(time='month') # easier not to chunk time dim, since it is small
+                if resolution: nrcan_res = resolution
+                elif dataset_args and 'NRCan' in dataset_args: 
+                    nrcan_res = dataset_args['NRCan'].get('resolution',None)
+                else:
+                    raise ValueError(dataset_args)
+                clim_chunks = load_chunks.copy()
+                clim_chunks['time'] = 12 # need 
+                if nrcan_res == 'CA12':
+                    T2clim = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12', 
+                                            grid=grid, lxarray=True, lgeoref=False, chunks=clim_chunks)['T2']
+                elif nrcan_res == 'SON60':
+                    T2clim = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1997,2018), resolution='SON60', 
+                                            grid=grid, lxarray=True, lgeoref=False, chunks=clim_chunks)['T2']
+                #del clim_chunks['time'] # renaming to month and don't want to chunk that!
+                dataset['climT2'] = T2clim.rename(time='month')#.chunk(chunks={dim:clim_chunks[dim] for dim in T2clim.dims if dim in (ref_var.xlon,ref_var.ylat)})
+                dataset = dataset.unify_chunks()
+                print(dataset)
                 # process timeseries
                 from processing.newvars import computePotEvapTh
                 note = 'PET based on the Thornthwaite method using only T2'
@@ -790,10 +802,10 @@ if __name__ == '__main__':
             xvar.attrs['note'] = note
             # set chunking for operation
             if lautoChunk:                 
-                chunks = autoChunk(xvar.shape)
+                chunks = ref_var.encoding['chunksizes'] if xvar.shape == ref_var.shape else autoChunk(xvar.shape)
             if chunks: 
                 xvar = xvar.chunk(chunks=chunks)
-            print('Chunks:',xvar.chunks)
+            print('Chunks:',chunks)
                 
             # create a dataset for export to new file
             ds_attrs = dataset.attrs.copy()

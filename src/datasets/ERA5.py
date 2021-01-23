@@ -149,17 +149,17 @@ if __name__ == '__main__':
 #   modes += ['load_Point_Timeseries']
   modes += ['derived_variables'     ]
 #   modes += ['load_Daily'            ]
-#   modes += ['monthly_mean'          ]
+  modes += ['monthly_mean'          ]
 #   modes += ['load_TimeSeries'       ]
-#   modes += ['monthly_normal'        ]
+  modes += ['monthly_normal'        ]
 #   modes += ['load_Climatology'      ]
 
   grid = None; resampling = None
 
   dataset = 'ERA5L'
 #   resolution = 'SON10'
-#   resolution = 'NA10'
-  resolution = 'AU10'
+  resolution = 'NA10'
+#   resolution = 'AU10'
   
   # variable list
 #   varlist = ['snow']
