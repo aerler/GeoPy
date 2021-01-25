@@ -17,13 +17,26 @@ from datasets.common import getRootFolder
 from geospatial.xarray_tools import loadXArray, default_lat_coords, default_lon_coords
 
 def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None, bias_correction=None, grid=None, resampling=None, 
-                      mode=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None, **kwargs):
+                      mode=None, aggregation=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None, **kwargs):
     ''' function to provide the folder and filename for the requested dataset parameters '''
-    if mode is None:
-        mode = 'clim' if period else 'daily'
-    else:
-        if mode.lower() not in ('clim','monthly','daily'):
-            raise ArgumentError(mode)
+    # select some defaults, mainly for backwards compatibility
+    if not aggregation and not mode:
+        raise ArgumentError()
+    elif mode and not aggregation:
+        if mode.lower() in ('clim','monthly'): 
+            aggregation = mode; mode = 'avg' # for pre-aggregated monthly data
+        elif mode.lower() == 'avg':
+            aggregation = 'clim' if period else 'monthly'
+        else: aggregation = mode
+    elif aggregation and not mode:
+        if aggregation.lower() in ('clim','monthly'): 
+            mode = 'avg' # for pre-aggregated monthly data
+        else: mode = aggregation
+    # check mode and aggregation
+    if aggregation.lower() not in ('clim','monthly','daily'):
+        raise ArgumentError(aggregation)
+    if mode.lower() not in ('avg','daily','6hourly','hourly'):
+        raise ArgumentError(mode)
     # some default settings
     if dataset is None and varname is not None: 
         if dataset_index is None:
@@ -52,18 +65,20 @@ def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None
     elif shape: gridstr = '_' + shape.lower() + gridstr
     elif station: gridstr = '_' + station.lower() + gridstr
     bcstr = '_' + bias_correction.lower() if bias_correction else ''
-    if mode.lower() == 'daily': name_str = bcstr + '_' + varname.lower() + gridstr
+    if aggregation.lower() == 'daily': name_str = bcstr + '_' + varname.lower() + gridstr
     else: name_str = bcstr + gridstr
-    mode_str = mode.lower()
+    agg_str = aggregation.lower()
     if period is None: pass
-    elif isinstance(period,str): mode_str += '_'+period
-    elif isinstance(period,(tuple,list)): mode_str += '_{}-{}'.format(*period)
+    elif isinstance(period,str): agg_str += '_'+period
+    elif isinstance(period,(tuple,list)): agg_str += '_{}-{}'.format(*period)
     else: raise NotImplementedError(period)
-    filename = '{}{}_{}.nc'.format(ds_str_file, name_str, mode_str)
+    filename = '{}{}_{}.nc'.format(ds_str_file, name_str, agg_str)
     # construct folder
     folder = getRootFolder(dataset_name=dataset, fallback_name='MergedForcing')
-    if mode.lower() == 'daily':
-        folder += ds_str_folder+'_daily'
+    if mode.lower() == 'avg':
+        folder += ds_str_folder+'avg'
+    else:
+        folder += ds_str_folder+'_'+mode.lower()
         if grid: 
             folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
             if resampling is None:
@@ -87,7 +102,6 @@ def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None
                 elif len(folder_list) == 1: resampling = folder_list[0]
             if resampling: 
                 folder = '{}/{}'.format(folder,resampling) # different resampling options are stored in subfolders                
-    else: folder += ds_str_folder+'avg'
     if folder[-1] != '/': folder += '/'
     if lcreateFolder: os.makedirs(folder, exist_ok=True)
     # return folder and filename
@@ -144,14 +158,14 @@ def addConstantFields(xds, const_list=None, grid=None):
 
 
 def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_correction=None, resolution=None, 
-                  period=None, shape=None, station=None, mode='daily', filetype=None, resampling=None, 
-                  varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,  
+                  period=None, shape=None, station=None, mode='daily', aggregation=None, filetype=None, 
+                  resampling=None, varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,  
                   lgeoref=True, geoargs=None, chunks=True, lautoChunk=False, lskip=False, **kwargs):
     ''' load data from standardized NetCDF files into an xarray Dataset '''
     # first, get folder and filename pattern
     folder,filename = getFolderFileName(varname='{var:s}', dataset=dataset, filetype=filetype, resolution=resolution, grid=grid,
                                         bias_correction=bias_correction, resampling=resampling, period=period, mode=mode,  
-                                        shape=shape, station=station, lcreateFolder=False, dataset_index=None)
+                                        aggregation=aggregation, shape=shape, station=station, lcreateFolder=False, dataset_index=None)
     # load XR dataset
     xds = loadXArray(varname=varname, varlist=varlist, folder=folder, varatts=varatts, filename_pattern=filename,  
                      default_varlist=default_varlist, varmap=varmap, mask_and_scale=mask_and_scale, grid=grid,  
