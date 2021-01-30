@@ -21,7 +21,7 @@ def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None
     ''' function to provide the folder and filename for the requested dataset parameters '''
     # select some defaults, mainly for backwards compatibility
     if not aggregation and not mode:
-        raise ArgumentError()
+        raise ArgumentError("Need to specify at least one of 'aggregation' or 'mode'!")
     elif mode and not aggregation:
         if mode.lower() in ('clim','monthly'): 
             aggregation = mode; mode = 'avg' # for pre-aggregated monthly data

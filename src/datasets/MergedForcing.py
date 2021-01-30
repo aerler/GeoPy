@@ -15,7 +15,6 @@ from warnings import warn
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
-import dask
 from collections import namedtuple
 from importlib import import_module
 import inspect
@@ -310,20 +309,23 @@ loadShapeTimeSeries    = loadMergedForcing_ShpTS # time-series without associate
 ## abuse for testing
 if __name__ == '__main__':
   
-  import time, gc
-  from multiprocessing.pool import ThreadPool
+  import time, os, gc
+#   from multiprocessing.pool import ThreadPool
   
   print('xarray version: '+xr.__version__+'\n')
         
+  #gc.set_debug(gc.DEBUG_LEAK)
 
-#   from dask.distributed import Client, LocalCluster
-#   # force multiprocessing (4 cores)
-#   cluster = LocalCluster(n_workers=4, diagnostics_port=18787)
-#   client = Client(cluster)
+  import dask
+  dask.config.set(**{'array.slicing.split_large_chunks': False}) # suppress warnings about large chunks
+#   dask.config.set(scheduler='single-threaded')
+  dask.config.set(temporary_directory='D:/Data/TMP/')
 
-#   from multiprocessing.pool import ThreadPool
-#   dask.set_options(pool=ThreadPool(4))
-#   dask.config.set(**{'array.slicing.split_large_chunks': True})
+  from dask.distributed import Client, LocalCluster
+  # force multiprocessing (4 cores)
+  cluster = LocalCluster(n_workers=1, dashboard_address='rz025:18787',
+                         threads_per_worker=1, memory_limit='1GB')
+  client = Client(cluster)
  
   ts_name = 'time_stamp'
   process_dataset = dataset_name # we can't overwrite dataset_name without causing errors...
@@ -341,14 +343,15 @@ if __name__ == '__main__':
   work_loads += ['load_Climatology'      ]
 
   # some settings
-  resolution = 'CA12'
+#   resolution = 'CA12'
 #   resolution = 'SON60'
-#   process_dataset = 'MergedForcing'
+# #   process_dataset = 'MergedForcing'
   process_dataset = 'NRCan'
   
-#   process_dataset = 'ERA5'
-#   resolution = 'AU10'; filetype = 'ERA5L'
+#   process_dataset = 'ERA5'; filetype = 'ERA5L'
 #   dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
+# #   resolution = 'AU10'
+#   resolution = 'NA10'
   
   grid = None; bias_correction = None
 #   grid = 'snw2'
@@ -444,10 +447,12 @@ if __name__ == '__main__':
         # save resampled dataset
         folder, filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='daily', 
                                              aggregation='clim', dataset_index=default_dataset_index, filetype=filetype)
+        nc_filepath = folder + filename
+        tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
         # write to NetCDF
         var_enc = dict(zlib=True, complevel=1, _FillValue=-9999)
         encoding = {varname:var_enc for varname in cds.data_vars.keys()}
-        cds.to_netcdf(folder+filename, mode='w', format='NETCDF4', unlimited_dims=[], engine='netcdf4',
+        cds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=[], engine='netcdf4',
                       encoding=encoding, compute=True)
         
         # add name and length of month (doesn't work properly with xarray)
@@ -455,6 +460,8 @@ if __name__ == '__main__':
         ds = addNameLengthMonth(ds, time_dim='time')
         # close NetCDF dataset
         ds.close()
+        if os.path.exists(nc_filepath): os.remove(nc_filepath)
+        os.rename(tmp_filepath, nc_filepath)
         
         # print timing
         end = time.time()
@@ -478,7 +485,6 @@ if __name__ == '__main__':
     elif mode == 'monthly_mean':
         
         # settings
-        load_chunks = None; lautoChunkLoad = False  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = False # auto chunk output - this is necessary to maintain proper chunking!
 #         time_slice = ('2011-01-01','2011-12-31') # inclusive
         time_slice = None
@@ -489,21 +495,22 @@ if __name__ == '__main__':
         
         # process just NRCan dataset
         process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None}
-        resolution = 'CA12'; chunks = dict(time=8, lat=64, lon=63)
+#         resolution = 'CA12'; chunks = dict(time=8, lat=64, lon=63)
+        resolution = 'SON60'; chunks = dict(time=9, lat=60, lon=60)
 
-        # just ERA5-land
+#         # just ERA5-land
 #         varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
-#         resolution = 'AU10'; filetype = 'ERA5L'
+#         resolution = 'NA10'; filetype = 'ERA5L'
 #         dataset_args = dict(ERA5=dict(filetype=filetype, lfliplat=True))
 #         if resolution == 'NA10': chunks = dict(time=8, latitude=61, longitude=62)
 #         elif resolution == 'AU10': chunks = dict(time=8, latitude=59, longitude=62)
         
 #         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True,
 #                                       resolution=resolution, lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
-        print(varlist)
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, 
                                       bias_correction=bias_correction, resolution=resolution,
                                       time_slice=time_slice, lautoChunk=lautoChunk, chunks=chunks, lskip=True)
+        xds = xds.unify_chunks()
         print(xds)
         print('')
         
@@ -512,6 +519,7 @@ if __name__ == '__main__':
         
         # aggregate month
         rds = xds.resample(time='MS',skipna=True,).mean()
+        rds = rds.unify_chunks()
         #rds.chunk(chunks=chunk_settings)
         print(rds)
         print('')
@@ -521,19 +529,25 @@ if __name__ == '__main__':
                                                    bias_correction=bias_correction, mode='daily',aggregation='monthly', 
                                                    dataset_index=default_dataset_index)
         nc_filepath = nc_folder + nc_filename
+        tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
         print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
         # write to NetCDF
-        var_enc = dict(chunksizes=None, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float
-        # N.B.: we are not prescribing chunk sizes; the automatic default will be 1 for time and as before for space;
-        #       monthly chunks make sense, since otherwise normals will be expensive to compute (access patterns are not sequential)
-        enc_varlist = rds.data_vars.keys()
-        rds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                      encoding={vn:var_enc for vn in enc_varlist}, compute=True)
+        del chunks['time']
+        var_enc = dict()
+        for varname,rvar in rds.data_vars.items():
+            cks = tuple(1 if dim == 'time' else chunks[dim] for dim in rvar.dims)
+            var_enc[varname] = dict(chunksizes=cks, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float
+            # N.B.: we are not prescribing chunk sizes; the automatic default will be 1 for time and as before for space;
+            #       monthly chunks make sense, since otherwise normals will be expensive to compute (access patterns are not sequential)            
+        rds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], ) # engine='netcdf4', encoding=None, compute=True
         # update time information
         print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
-        ncds = nc.Dataset(nc_filepath, mode='a')
+        ncds = nc.Dataset(tmp_filepath, mode='a')
         ncts = addTimeStamps(ncds, units='month') # add time-stamps        
         ncds.close()
+        # replace original file
+        if os.path.exists(nc_filepath): os.remove(nc_filepath)
+        os.rename(tmp_filepath, nc_filepath)
         # print timing
         end = time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
@@ -546,9 +560,11 @@ if __name__ == '__main__':
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
 #         varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
-#         varlist = {'NRCan':None, 'const':None}
-        varlist = {'ERA5':['precip'], 'const':None}; dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
-        grid = None; resolution = 'AU10'
+        varlist = {'NRCan':None, 'const':None}
+        chunks = dict(time=8, lat=64, lon=63)
+#         varlist = {'ERA5':['precip'], 'const':None}; dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
+#         grid = None; resolution = 'AU10'
+#         chunks = dict(time=8, latitude=59, longitude=62)
 #         varlist = dataset_varlist
 #         varlist = {dataset:None for dataset in ['NRCan',dataset_name, 'const']}
 #         varlist = default_varlist
@@ -558,8 +574,7 @@ if __name__ == '__main__':
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, 
-                                      bias_correction=bias_correction, resolution=resolution,
-                                      chunks=dict(time=8, latitude=59, longitude=62),
+                                      bias_correction=bias_correction, resolution=resolution, chunks=chunks,
                                       time_slice=time_slice, lautoChunk=False, lskip=True)
         print(xds)
         print('')
@@ -595,7 +610,7 @@ if __name__ == '__main__':
         
     elif mode == 'compute_derived':
       
-      with dask.config.set(pool=ThreadPool(4)): # I'm not sure if this works... or it is I/O limited
+        #with dask.config.set(pool=ThreadPool(4)): # I'm not sure if this works... or it is I/O limited
         
         start = time.time()
         
@@ -832,11 +847,12 @@ if __name__ == '__main__':
             nc_folder,nc_filename = getFolderFileName(varname=varname, dataset=ds_attrs['name'], resolution=resolution, grid=grid, 
                                                       resampling=resampling, dataset_index=default_dataset_index)
             nc_filepath = nc_folder + nc_filename
+            tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
             print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
             # write to NetCDF
             print(dataset.attrs)
             var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype) # should be float
-            task = nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+            task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                           encoding={varname:var_enc,}, compute=False)
             if lexec:
                 task.compute()
@@ -844,7 +860,11 @@ if __name__ == '__main__':
                 print(var_enc)
                 print(task)
                 task.visualize(filename=nc_folder+'netcdf.svg')  # This file is never produced
-
+            
+            # replace original file
+            if os.path.exists(nc_filepath): os.remove(nc_filepath)
+            os.rename(tmp_filepath, nc_filepath)
+            
         # print timing
         end =  time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))

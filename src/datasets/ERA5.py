@@ -130,7 +130,7 @@ loadShapeTimeSeries    = None # time-series without associated grid (e.g. provin
 ## abuse for testing
 if __name__ == '__main__':
 
-  import time, gc 
+  import time, gc, os
   
   #print('xarray version: '+xr.__version__+'\n')
   xr.set_options(keep_attrs=True)
@@ -294,9 +294,9 @@ if __name__ == '__main__':
             lskip = False
             folder,filename = getFolderFileName(varname=varname, dataset='ERA5', filetype=dataset, resolution=resolution, grid=grid, 
                                                 resampling=resampling, mode='daily', lcreateFolder=True)
-            filepath = '{}/{}'.format(folder,filename)
-            if lappend_master and osp.exists(filepath):
-                ncds = nc.Dataset(filepath, mode='a')
+            nc_filepath = '{}/{}'.format(folder,filename)
+            if lappend_master and osp.exists(nc_filepath):
+                ncds = nc.Dataset(nc_filepath, mode='a')
                 ncvar3 = ncds[varname]
                 ncts = ncds[ts_name]
                 nctc = ncds['time'] # time coordinate
@@ -400,10 +400,11 @@ if __name__ == '__main__':
                     nds.coords['time'].attrs.pop('units',None) # needs to be free for use by xarray
                     print('\n')
                     print(nds)
-                    print(filepath)
+                    print(nc_filepath)
                     # write to NetCDF
+                    tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation            
                     var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype)
-                    task = nds.to_netcdf(filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                    task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                                          encoding={varname:var_enc,}, compute=False)
                     if lexec:
                         task.compute()
@@ -412,6 +413,9 @@ if __name__ == '__main__':
                         print(task)
                         task.visualize(filename=folder+'netcdf.svg')  # This file is never produced
                     del nds, xvar
+                    # replace original file
+                    if os.path.exists(nc_filepath): os.remove(nc_filepath)
+                    os.rename(tmp_filepath, nc_filepath)
                     
                 # clean up
                 gc.collect()

@@ -756,14 +756,17 @@ if __name__ == '__main__':
             
             nc_name = vardefs[varname]['name']
             nc_filepath = daily_folder + netcdf_filename.format(VAR=nc_name, RES=grid_res).lower()
+            tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
             vardef = {varname:vardefs[varname]} # only one variable
             # read rasters and write to NetCDF file
-            convertRasterToNetCDF(filepath=nc_filepath, raster_folder=raster_folder, raster_path_func=raster_path_func, vardefs=vardef, 
-                                  start_date=start_date, end_date=end_date, sampling=sampling, ds_atts=ds_atts, griddef=griddef,
-                                  loverwrite=loverwrite,)
-            
-            assert os.path.exists(nc_filepath), nc_filepath
             print('\nSaving to NetCDF-4 file:\n '+nc_filepath+'\n')
+            convertRasterToNetCDF(filepath=tmp_filepath, raster_folder=raster_folder, raster_path_func=raster_path_func, vardefs=vardef, 
+                                  start_date=start_date, end_date=end_date, sampling=sampling, ds_atts=ds_atts, griddef=griddef,
+                                  loverwrite=loverwrite,)            
+            assert os.path.exists(tmp_filepath), tmp_filepath
+            # replace original file
+            if os.path.exists(nc_filepath): os.remove(nc_filepath)
+            os.rename(tmp_filepath, nc_filepath)
         
         # print timing
         end = time()
