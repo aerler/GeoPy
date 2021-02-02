@@ -112,7 +112,7 @@ netcdf_settings = dict(chunksizes=(8,256,256))
 
 def loadNRCan_Daily(varname=None, varlist=None, grid=None, resolution=None, shape=None, station=None, 
                     resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None,  
-                    chunks=None, lautoChunk=False, lxarray=True, lgeospatial=True, **kwargs):
+                    chunks=True, multi_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily NRCan data from NetCDF-4 files using xarray and add some projection information '''
     if not ( lxarray and lgeospatial ): 
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
@@ -122,7 +122,7 @@ def loadNRCan_Daily(varname=None, varlist=None, grid=None, resolution=None, shap
     default_varlist = res_varlists.get(resolution, None)
     xds = loadXRDataset(varname=varname, varlist=varlist, dataset='NRCan', grid=grid, resolution=resolution, shape=shape,
                         station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap,  
-                        lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
+                        lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **kwargs)
     return xds
 
 
@@ -659,12 +659,12 @@ ts_file_pattern = tsfile # filename pattern: grid
 clim_file_pattern = avgfile # filename pattern: variable name and resolution
 data_folder = avgfolder # folder for user data
 grid_def = {'NA12':NRCan_NA12_grid, 'NA60':NRCan_NA60_grid, 'CA12':NRCan_CA12_grid, 'CA24':NRCan_CA24_grid, 'SON60':NRCan_SON60_grid} # standardized grid dictionary
-LTM_grids = ['NA12','CA12','CA24'] # grids that have long-term mean data 
+LTM_grids = ['NA12','CA12','CA24','SON60'] # grids that have long-term mean data 
 LTM_grids += ['na12_tundra','na12_taiga','na12_maritime','na12_ephemeral','na12_prairies','na12_alpine',] # some fake grids to accommodate different snow densities
-TS_grids = ['NA12','NA60','CA12'] # grids that have time-series data
+TS_grids = ['NA12','NA60','CA12','SON60'] # grids that have time-series data
 TS_grids += ['na60_'+var for var in varlist]
 TS_grids += ['na12_tundra','na12_taiga','na12_maritime','na12_ephemeral','na12_prairies','na12_alpine',] # some fake grids to accommodate different snow densities
-grid_res = {'NA12':1./12.,'NA60':1./60.,'CA12':1./12.,'CA24':1./24.} # no special name, since there is only one...
+grid_res = {'NA12':1./12.,'NA60':1./60.,'CA12':1./12.,'CA24':1./24.,'SON60':1./60.} # no special name, since there is only one...
 default_grid = NRCan_NA12_grid
 # functions to access specific datasets
 loadDailyTimeSeries = loadNRCan_Daily # daily time-series data

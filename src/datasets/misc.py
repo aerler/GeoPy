@@ -17,7 +17,8 @@ from datasets.common import getRootFolder
 from geospatial.xarray_tools import loadXArray, default_lat_coords, default_lon_coords
 
 def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None, bias_correction=None, grid=None, resampling=None, 
-                      mode=None, aggregation=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None, **kwargs):
+                      mode=None, aggregation=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None, 
+                      data_root=None, **kwargs):
     ''' function to provide the folder and filename for the requested dataset parameters '''
     # select some defaults, mainly for backwards compatibility
     if not aggregation and not mode:
@@ -45,6 +46,7 @@ def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None
     # dataset-specific settings
     if dataset.lower() == 'mergedforcing' or dataset.lower() == 'merged': 
         filetype = 'merged'; dataset = 'MergedForcing'
+        resolution = None
     elif dataset.lower() == 'nrcan':
         if not resolution: resolution = 'CA12' # default
         filetype = dataset.lower() # no filetypes
@@ -74,7 +76,10 @@ def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None
     else: raise NotImplementedError(period)
     filename = '{}{}_{}.nc'.format(ds_str_file, name_str, agg_str)
     # construct folder
-    folder = getRootFolder(dataset_name=dataset, fallback_name='MergedForcing')
+    if data_root is None:
+        folder = getRootFolder(dataset_name=dataset, fallback_name='MergedForcing')
+    else:
+        folder = '{}/{}/'.format(data_root,dataset)
     if mode.lower() == 'avg':
         folder += ds_str_folder+'avg'
     else:
@@ -160,7 +165,7 @@ def addConstantFields(xds, const_list=None, grid=None):
 def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_correction=None, resolution=None, 
                   period=None, shape=None, station=None, mode='daily', aggregation=None, filetype=None, 
                   resampling=None, varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,  
-                  lgeoref=True, geoargs=None, chunks=True, lautoChunk=False, lskip=False, **kwargs):
+                  lgeoref=True, geoargs=None, chunks=True, multi_chunks=None, lskip=False, **kwargs):
     ''' load data from standardized NetCDF files into an xarray Dataset '''
     # first, get folder and filename pattern
     folder,filename = getFolderFileName(varname='{var:s}', dataset=dataset, filetype=filetype, resolution=resolution, grid=grid,
@@ -169,7 +174,7 @@ def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_corr
     # load XR dataset
     xds = loadXArray(varname=varname, varlist=varlist, folder=folder, varatts=varatts, filename_pattern=filename,  
                      default_varlist=default_varlist, varmap=varmap, mask_and_scale=mask_and_scale, grid=grid,  
-                     lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, lskip=lskip, **kwargs)
+                     lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, lskip=lskip, **kwargs)
     # supplement annotation/attributes
     if bias_correction is not None and 'bias_correction' not in xds.attrs: xds.attrs['bias_correction'] = bias_correction
     if resolution is not None and 'resolution' not in xds.attrs: xds.attrs['resolution'] = resolution

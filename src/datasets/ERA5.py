@@ -76,7 +76,7 @@ netcdf_settings = dict(chunksizes=(8,ERA5Land_size[0]/16,ERA5Land_size[1]/32))
 
 def loadERA5_Daily(varname=None, varlist=None, dataset=None, filetype=None, grid=None, resolution=None, shape=None, station=None, 
                    resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None, lfliplat=False, aggregation='daily',
-                   mode='daily', chunks=True, lautoChunk=False, lxarray=True, lgeospatial=True, **kwargs):
+                   mode='daily', chunks=True, multi_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily ERA5 data from NetCDF-4 files using xarray and add some projection information '''
     if not ( lxarray and lgeospatial ): 
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
@@ -91,8 +91,8 @@ def loadERA5_Daily(varname=None, varlist=None, dataset=None, filetype=None, grid
         if grid is None and station is None and shape is None: varatts = varatts_list[filetype] # original files
     default_varlist = default_varlists.get(dataset, None)
     xds = loadXRDataset(varname=varname, varlist=varlist, dataset='ERA5', filetype=filetype, grid=grid, resolution=resolution, shape=shape,
-                        station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap,  
-                        mode=mode, aggregation=aggregation, lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
+                        station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap, mode=mode, 
+                        aggregation=aggregation, lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **kwargs)
     # flip latitude dimension
     if lfliplat and 'latitude' in xds.coords:
         xds = xds.reindex(latitude=xds.latitude[::-1])

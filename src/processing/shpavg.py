@@ -197,11 +197,11 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 4; ldebug = False # for quick computations
+    NP = 6; ldebug = False # for quick computations
     modes = ('time-series','climatology')
 #     modes = ('climatology',)
 #     modes = ('time-series',) 
-    loverwrite = True
+    loverwrite = False
     varlist = None
     
     periods = []
@@ -229,8 +229,8 @@ if __name__ == '__main__':
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
 #     datasets += ['Unity']; periods = [15,30] 
-    datasets += ['MergedForcing']; periods = [(2011,2018)]
-    grid = 'son2'; resolutions['MergedForcing'] = ['SON60']
+    datasets += ['NRCan']; periods = [(2011,2018),(1997,2018)]; lLTM = False
+    grid = 'son2'; resolutions['NRCan'] = ['SON60']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False

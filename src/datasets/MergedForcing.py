@@ -25,7 +25,7 @@ from geodata.gdal import addGDALtoDataset
 from datasets.misc import getFolderFileName, addConstantFields, loadXRDataset
 # for georeferencing
 from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
-from geospatial.xarray_tools import addGeoReference, updateVariableAttrs, computeNormals
+from geospatial.xarray_tools import addGeoReference, updateVariableAttrs, computeNormals, getCommonChunks
 
 ## Meta-vardata
 
@@ -67,8 +67,8 @@ netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 # list of available datasets/collections
 DSNT = namedtuple(typename='Dataset', field_names=['name','interval','start_date','end_date',])
 dataset_attributes = dict(SnoDAS  = DSNT(name='SnoDAS',interval='1D', start_date='2011-01-01', end_date=None,  ),                          
-                          NRCan   = DSNT(name='NRCan',  interval='1D', start_date=None, end_date='2017-12-31', ),
-                          ERA5L   = DSNT(name='ERA5L',  interval='1D', start_date='1997-01-01', end_date=None, ), 
+                          NRCan   = DSNT(name='NRCan',  interval='1D', start_date='1950-01-01', end_date='2017-12-31', ),
+                          ERA5L   = DSNT(name='ERA5L',  interval='1D', start_date='1981-01-01', end_date=None, ), 
                           #CaSPAr  = DSNT(name='CaSPAr',  interval='6H', start_date='2017-09-11T12', end_date='2019-12-30T12', ),
                           )
 dataset_list = list(dataset_attributes.keys())
@@ -85,7 +85,7 @@ default_varlist = [varname for varname in varlist if varname not in default_data
 
 
 def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_index=None, dataset_args=None, dataset_name=dataset_name, 
-                            time_slice=None, compat='override', join='inner', fill_value=None, ldebug=False, **kwargs):
+                            time_slice=None, compat='override', join='inner', fill_value=np.NaN, ldebug=False, **kwargs):
     ''' function to load and merge data from different high-resolution datasets (e.g. SnoDAS or NRCan) using xarray;
         typical dataset-agnostic arguments: grid=str, lgeoref=True, geoargs=dict, chunks=dict, lautoChunk=False, 
         typical dataset-specific arguments: folder=str, resampling=str, resolution=str, bias_correction=str '''
@@ -95,7 +95,8 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
     elif varname:
         varlist = [varname] # load a single variable
     elif varlist is None:
-        varlist = list(varatts.keys())
+        if dataset is None: varlist = list(varatts.keys())
+        else: varlist = {dataset:None, 'const':None} # load default list for dataset
     if dataset_args is None: dataset_args = dict() # avoid errors
     # assemble dataset list and arguments
     if isinstance(varlist,dict):
@@ -137,7 +138,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
         for key in global_ds_atts_keys: # list of dataset-specific arguments that have to be controlled
             if key not in argslist and key in ds_args: del ds_args[key]
         # load time series and and apply some formatting to vars
-        ds = loadFunction(varlist=varlist, **ds_args)
+        ds = loadFunction(varlist=varlist, compat=compat, join=join, fill_value=fill_value, **ds_args)
         # add some dataset attributes to variables, since we will be merging datasets
         for var in ds.variables.values(): var.attrs['dataset_name'] = dataset_name
         for key in global_ds_atts_keys: # list of dataset-specific arguments that have to be controlled
@@ -253,32 +254,32 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
     return dataset
 
 
-def loadMergedForcing_TS(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None,
-                         lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
+def loadMergedForcing_TS(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, mode='avg', 
+                         aggregation='monthly', lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
     return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
-                                 mode='monthly', period=None, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
+                                 mode=mode, aggregation=aggregation, period=None, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
                                  ltoMonthly=ltoMonthly, lfromMonthly=lfromMonthly, shape=None, station=None, **kwargs)
 
-def loadMergedForcing(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, period=None,
-                      lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
+def loadMergedForcing(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, period=None, mode='avg', 
+                      aggregation='clim', lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly normal merged forcing data '''
     return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
-                                 mode='clim', period=period, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
+                                 mode=mode, aggregation=aggregation, period=period, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
                                  ltoMonthly=ltoMonthly, lfromMonthly=lfromMonthly, shape=None, station=None, **kwargs)
 
-def loadMergedForcing_ShpTS(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, shape=None,
-                            lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
+def loadMergedForcing_ShpTS(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, shape=None, mode='avg', 
+                            aggregation='monthly', lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load monthly transient merged forcing data averaged over shapes '''
-    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
-                                 mode='monthly', period=None, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
+    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid,
+                                 mode=mode, aggregation=aggregation, period=None, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
                                  ltoMonthly=ltoMonthly, lfromMonthly=lfromMonthly, shape=shape, station=None, **kwargs)
 
-def loadMergedForcing_Shp(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, period=None,
-                          shape=None, lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
+def loadMergedForcing_Shp(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, period=None, mode='avg', 
+                          aggregation='clim', shape=None, lxarray=False, ltoMonthly=True, lfromMonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load monthly normal merged forcing data averaged over shapes '''
     return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
-                                 mode='clim', period=period, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
+                                 mode=mode, aggregation=aggregation, period=period, lxarray=lxarray, lgeoref=lgeoref, geoargs=geoargs, 
                                  ltoMonthly=ltoMonthly, lfromMonthly=lfromMonthly, shape=shape, station=None, **kwargs)
 
 ## Dataset API
@@ -318,14 +319,19 @@ if __name__ == '__main__':
 
   import dask
   dask.config.set(**{'array.slicing.split_large_chunks': False}) # suppress warnings about large chunks
-#   dask.config.set(scheduler='single-threaded')
-  dask.config.set(temporary_directory='D:/Data/TMP/')
+  dask.config.set(temporary_directory='G:/Data/TMP/')
+  
+#   # turn caching off
+#   from dask.cache import Cache
+#   cache = Cache(0)
+#   cache.register() 
 
-  from dask.distributed import Client, LocalCluster
-  # force multiprocessing (4 cores)
-  cluster = LocalCluster(n_workers=1, dashboard_address='rz025:18787',
-                         threads_per_worker=1, memory_limit='1GB')
-  client = Client(cluster)
+#   dask.config.set(scheduler='single-threaded')
+#   from dask.distributed import Client, LocalCluster
+#   # force multiprocessing (4 cores)
+#   cluster = LocalCluster(n_workers=1, dashboard_address='rz025:18787',
+#                          threads_per_worker=1, memory_limit='2GB')
+#   client = Client(cluster)
  
   ts_name = 'time_stamp'
   process_dataset = dataset_name # we can't overwrite dataset_name without causing errors...
@@ -336,17 +342,17 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
 #   work_loads += ['compute_derived']
-#   work_loads += ['load_Daily']
-  work_loads += ['monthly_mean'          ]
-  work_loads += ['load_TimeSeries'      ]
-  work_loads += ['monthly_normal'        ]
-  work_loads += ['load_Climatology'      ]
+  work_loads += ['load_Daily']
+#   work_loads += ['monthly_mean'          ]
+#   work_loads += ['load_TimeSeries'      ]
+#   work_loads += ['monthly_normal'        ]
+#   work_loads += ['load_Climatology'      ]
 
   # some settings
-#   resolution = 'CA12'
-#   resolution = 'SON60'
-# #   process_dataset = 'MergedForcing'
+#   process_dataset = 'MergedForcing'
   process_dataset = 'NRCan'
+  resolution = 'CA12'
+#   resolution = 'SON60'
   
 #   process_dataset = 'ERA5'; filetype = 'ERA5L'
 #   dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
@@ -396,16 +402,18 @@ if __name__ == '__main__':
     elif mode == 'load_Climatology':
        
         lxarray = False
-        varname = 'precip'
 #         process_dataset = 'NRCan'; period = (1997,2018); kwargs = dict()
-        period = (2011,2018); kwargs = dict()
-        period = (1985,2015)
+        kwargs = dict()
+        period = prdstr # from monthly_normal
+#         period = (2011,2018)
+#         period = (1985,2015)
+#         period = (1997,2018)
 #         period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname]) # load regular NRCan normals
-        xds = loadMergedForcing(grid=grid, lxarray=lxarray, period=period, dataset_args=dataset_args,
+        xds = loadMergedForcing(grid=grid, lxarray=lxarray, period=period, dataset_args=dataset_args, mode='daily',
                                 dataset_name=process_dataset, resolution=resolution, **kwargs)
         print(xds)
         print('')
-        xv = xds[varname]
+        xv = list(xds.data_vars.values())[0]
         print(xv)
         if lxarray:
             print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
@@ -416,8 +424,8 @@ if __name__ == '__main__':
 #         start_date = '2011-01'; end_date = '2011-12'; varlist = None
 #         start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
 #         start_date = '1985-01'; end_date = '2014-12'; varlist = None # date ranges are inclusive
-        start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
-#         start_date = None; end_date = None; varlist = None
+#         start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
+        start_date = None; end_date = None; varlist = None
 #         varlist = ['T2','time_stamp']
 #         process_dataset = 'NRCan'; resolution = 'SON60'
 
@@ -435,6 +443,7 @@ if __name__ == '__main__':
                                      dataset_args=dataset_args, lxarray=True) # need Dask!
         xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
         print(xds)
+        chunks = getCommonChunks(xds, method='min') # used later
         
         # construct period string
         print('\n')
@@ -443,23 +452,27 @@ if __name__ == '__main__':
         print('\n')
         prdstr = cds.attrs['period']
         print(prdstr)            
-        
+
+        # copy encoding      
+        encoding = dict()
+        print('Original Chunks:',chunks)  
+        for varname,cvar in cds.data_vars.items():
+            cks = tuple(1 if dim == 'time' else chunks[dim] for dim in cvar.dims)
+            encoding[varname] = dict(chunksizes=cks, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float            
         # save resampled dataset
         folder, filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='daily', 
                                              aggregation='clim', dataset_index=default_dataset_index, filetype=filetype)
         nc_filepath = folder + filename
         tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
         # write to NetCDF
-        var_enc = dict(zlib=True, complevel=1, _FillValue=-9999)
-        encoding = {varname:var_enc for varname in cds.data_vars.keys()}
         cds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=[], engine='netcdf4',
                       encoding=encoding, compute=True)
         
         # add name and length of month (doesn't work properly with xarray)
-        ds = nc.Dataset(folder+filename, mode='a')
+        ds = nc.Dataset(tmp_filepath, mode='a')
         ds = addNameLengthMonth(ds, time_dim='time')
-        # close NetCDF dataset
         ds.close()
+        # rename NetCDF file
         if os.path.exists(nc_filepath): os.remove(nc_filepath)
         os.rename(tmp_filepath, nc_filepath)
         
@@ -485,18 +498,27 @@ if __name__ == '__main__':
     elif mode == 'monthly_mean':
         
         # settings
-        chunks = None; lautoChunk = False # auto chunk output - this is necessary to maintain proper chunking!
-#         time_slice = ('2011-01-01','2011-12-31') # inclusive
+        lexec = True
+        # auto chunk, but use multiple of chunkf for better workloads (~ 100 MB per chunk)
+        multi_chunks = {dim:4 for dim in ('lat','lon','latitude','longitude','x','y')}
+        multi_chunks['time'] = 92 # close to 2 years with time chunk 8 (default)
+        #time_slice = ('2011-01-01','2011-12-31') # inclusive
         time_slice = None
         varlist = None
         dataset_args = None; filetype = None      
-#         varlist = dataset_varlist        
-#         varlist = ['T2']
         
-        # process just NRCan dataset
-        process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None}
-#         resolution = 'CA12'; chunks = dict(time=8, lat=64, lon=63)
-        resolution = 'SON60'; chunks = dict(time=9, lat=60, lon=60)
+        # Merged Forcing
+#         grid = 'son2'
+#         process_dataset = 'MergedForcing'; varlist = {'MergedForcing':None, 'const':None, }
+#         grid = 'son2'; chunks = dict(time=9, x=59, y=59)
+#         resolution = 'SON60'; chunks = dict(time=9, x=60, y=60)
+        
+#         # process just NRCan dataset
+        process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5']}
+# #         resolution = 'CA12'; #chunks = dict(time=8, lat=64, lon=63)
+#         grid = 'son2'; resolution = 'SON60'
+        
+        if grid == 'son2': multi_chunks['time'] = 82 # closer to 2 years... time chunk is 9
 
 #         # just ERA5-land
 #         varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
@@ -507,47 +529,61 @@ if __name__ == '__main__':
         
 #         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True,
 #                                       resolution=resolution, lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
-        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, 
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, join='outer', fill_value=np.NaN, 
                                       bias_correction=bias_correction, resolution=resolution,
-                                      time_slice=time_slice, lautoChunk=lautoChunk, chunks=chunks, lskip=True)
-        xds = xds.unify_chunks()
+                                      time_slice=time_slice, multi_chunks=multi_chunks, chunks=True, lskip=True)
+        #xds = xds.unify_chunks()
+        chunks = getCommonChunks(xds, method='min') # used later
         print(xds)
         print('')
-        
         # start operation
         start = time.time()
         
         # aggregate month
         rds = xds.resample(time='MS',skipna=True,).mean()
-        rds = rds.unify_chunks()
-        #rds.chunk(chunks=chunk_settings)
         print(rds)
         print('')
-        
+        # collect garbage
+        del xds
+        gc.collect()
+
+        # setup encoding
+        encoding = dict()
+        print('Original Chunks:',chunks)
+        for varname,rvar in rds.data_vars.items():
+            cks = tuple(1 if dim == 'time' else chunks[dim] for dim in rvar.dims)
+            # N.B.: use chunk size 1 for time and as before for space; monthly chunks make sense, since
+            #       otherwise normals will be expensive to compute (access patterns are not sequential)            
+            encoding[varname] = dict(chunksizes=cks, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float
+            #print(varname,cks,rvar.encoding)
         # define destination file
         nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, grid=grid, resolution=resolution, filetype=filetype,
                                                    bias_correction=bias_correction, mode='daily',aggregation='monthly', 
-                                                   dataset_index=default_dataset_index)
+                                                   dataset_index=default_dataset_index, data_root=None)
         nc_filepath = nc_folder + nc_filename
-        tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
+        tmp_filepath = nc_filepath + ( '.tmp' if lexec else '.test' ) # use temporary file during creation
         print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
         # write to NetCDF
-        del chunks['time']
-        var_enc = dict()
-        for varname,rvar in rds.data_vars.items():
-            cks = tuple(1 if dim == 'time' else chunks[dim] for dim in rvar.dims)
-            var_enc[varname] = dict(chunksizes=cks, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float
-            # N.B.: we are not prescribing chunk sizes; the automatic default will be 1 for time and as before for space;
-            #       monthly chunks make sense, since otherwise normals will be expensive to compute (access patterns are not sequential)            
-        rds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], ) # engine='netcdf4', encoding=None, compute=True
-        # update time information
-        print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
-        ncds = nc.Dataset(tmp_filepath, mode='a')
-        ncts = addTimeStamps(ncds, units='month') # add time-stamps        
-        ncds.close()
-        # replace original file
-        if os.path.exists(nc_filepath): os.remove(nc_filepath)
-        os.rename(tmp_filepath, nc_filepath)
+        # write results to file (actually just create file)
+        task = rds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], 
+                             engine='netcdf4', encoding=encoding, compute=False)
+        if lexec:
+            task.compute()
+
+            # update time information
+            print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
+            ncds = nc.Dataset(tmp_filepath, mode='a')
+            ncts = addTimeStamps(ncds, units='month') # add time-stamps        
+            ncds.close()
+            # replace original file
+            if os.path.exists(nc_filepath): os.remove(nc_filepath)
+            os.rename(tmp_filepath, nc_filepath)
+        
+        else:
+            print(encoding)
+            print(task)
+            task.visualize(filename=nc_filepath+'.svg')  # This file is never produced
+        
         # print timing
         end = time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
@@ -556,12 +592,13 @@ if __name__ == '__main__':
     elif mode == 'load_Daily':
        
 #         resolution = 'SON60'; grid = None
-       
+          
+        multi_chunks = 'time'
+        multi_chunks = None
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
 #         varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
-        varlist = {'NRCan':None, 'const':None}
-        chunks = dict(time=8, lat=64, lon=63)
+        varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5']}
 #         varlist = {'ERA5':['precip'], 'const':None}; dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
 #         grid = None; resolution = 'AU10'
 #         chunks = dict(time=8, latitude=59, longitude=62)
@@ -573,9 +610,10 @@ if __name__ == '__main__':
 #         dataset_args = None
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
-        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, 
-                                      bias_correction=bias_correction, resolution=resolution, chunks=chunks,
-                                      time_slice=time_slice, lautoChunk=False, lskip=True)
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, join='outer', fill_value=np.NaN,
+                                      bias_correction=bias_correction, resolution=resolution, chunks=True,
+                                      time_slice=time_slice, multi_chunks=multi_chunks, lskip=True)
+        #xds.unify_chunks()
         print(xds)
         print('')
         print(xds.attrs)
