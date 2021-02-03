@@ -196,8 +196,8 @@ if __name__ == '__main__':
     shape_name = config['shape_name']
     shapes = config['shapes']
   else:
-#     NP = 1 ; ldebug = True # for quick computations
-    NP = 6; ldebug = False # for quick computations
+    NP = 1 ; ldebug = True # for quick computations
+#     NP = 6; ldebug = False # for quick computations
     modes = ('time-series','climatology')
 #     modes = ('climatology',)
 #     modes = ('time-series',) 

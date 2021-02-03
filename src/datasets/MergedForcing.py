@@ -45,12 +45,12 @@ varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='L
                liqwatflx_sno = dict(name='liqwatflx_sno', units='kg/m^2/s', long_name='LWF (SnoDAS)'),
                liqwatflx_ne5 = dict(name='liqwatflx_ne5', units='kg/m^2/s', long_name='LWF (ERA5-Land)'),
                pet = dict(name='pet', units='kg/m^2/s', long_name='Potential Evapotranspiration'),
-               pet_pt = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)'),
+               pet_pt  = dict(name='pet_pt',  units='kg/m^2/s', long_name='PET (Priestley-Taylor)'),
                pet_pts = dict(name='pet_pts', units='kg/m^2/s', long_name='PET (Priestley-Taylor, approx. LW)'),
                pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
                pet_har = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargeaves)'),
                pet_haa = dict(name='pet_haa', units='kg/m^2/s', long_name='PET (Hargeaves-Allen)'),
-               pet_th  = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)'),
+               pet_th  = dict(name='pet_th',  units='kg/m^2/s', long_name='PET (Thornthwaite)'),
                )
 varlist = varatts.keys()
 ignore_list = []
@@ -232,6 +232,7 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
                 from datetime import datetime
                 from dateutil import relativedelta
                 from geodata.base import Axis
+                print('Rewriting xarray time axis into GeoPy format')
                 #print(tunits[11:21])
                 startdate = datetime.strptime(tunits[11:21], '%Y-%m-%d'); 
                 date1979 = datetime.strptime('1979-01-01', '%Y-%m-%d')
@@ -342,11 +343,11 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
 #   work_loads += ['compute_derived']
-  work_loads += ['load_Daily']
-#   work_loads += ['monthly_mean'          ]
-#   work_loads += ['load_TimeSeries'      ]
-#   work_loads += ['monthly_normal'        ]
-#   work_loads += ['load_Climatology'      ]
+#   work_loads += ['load_Daily']
+  work_loads += ['monthly_mean'          ]
+  work_loads += ['load_TimeSeries'      ]
+  work_loads += ['monthly_normal'        ]
+  work_loads += ['load_Climatology'      ]
 
   # some settings
 #   process_dataset = 'MergedForcing'
@@ -404,8 +405,8 @@ if __name__ == '__main__':
         lxarray = False
 #         process_dataset = 'NRCan'; period = (1997,2018); kwargs = dict()
         kwargs = dict()
-        period = prdstr # from monthly_normal
-#         period = (2011,2018)
+#         period = prdstr # from monthly_normal
+        period = (2011,2018)
 #         period = (1985,2015)
 #         period = (1997,2018)
 #         period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname]) # load regular NRCan normals
@@ -502,8 +503,8 @@ if __name__ == '__main__':
         # auto chunk, but use multiple of chunkf for better workloads (~ 100 MB per chunk)
         multi_chunks = {dim:4 for dim in ('lat','lon','latitude','longitude','x','y')}
         multi_chunks['time'] = 92 # close to 2 years with time chunk 8 (default)
-        #time_slice = ('2011-01-01','2011-12-31') # inclusive
         time_slice = None
+#         time_slice = ('2011-01-01','2011-12-31') # inclusive
         varlist = None
         dataset_args = None; filetype = None      
         
@@ -517,6 +518,7 @@ if __name__ == '__main__':
         process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5']}
 # #         resolution = 'CA12'; #chunks = dict(time=8, lat=64, lon=63)
 #         grid = 'son2'; resolution = 'SON60'
+        grid = 'snw2'; resolution = 'SON60'
         
         if grid == 'son2': multi_chunks['time'] = 82 # closer to 2 years... time chunk is 9
 

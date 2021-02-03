@@ -372,7 +372,7 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
   else:
     lstation = False; lshape = False
   # varlist (varlist = None means all variables)
-  if varatts is None: varatts = default_varatts.copy()
+  #if varatts is None: varatts = default_varatts.copy()
   #if varlist is not None: varlist = translateVarNames(varlist, varatts)
   # N.B.: renaming of variables in the varlist is now handled in theDatasetNetCDF initialization routine
   # filelist
