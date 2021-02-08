@@ -25,7 +25,7 @@ from geodata.gdal import addGDALtoDataset
 from datasets.misc import getFolderFileName, addConstantFields, loadXRDataset
 # for georeferencing
 from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
-from geospatial.xarray_tools import addGeoReference, updateVariableAttrs, computeNormals, getCommonChunks
+from geospatial.xarray_tools import addGeoReference, updateVariableAttrs, computeNormals, getCommonChunks, saveXArray
 
 ## Meta-vardata
 
@@ -350,10 +350,10 @@ if __name__ == '__main__':
   work_loads += ['load_Climatology'      ]
 
   # some settings
-#   process_dataset = 'MergedForcing'
-  process_dataset = 'NRCan'
-  resolution = 'CA12'
-#   resolution = 'SON60'
+  process_dataset = 'MergedForcing'
+#   process_dataset = 'NRCan'
+#   resolution = 'CA12'
+  resolution = 'SON60'
   
 #   process_dataset = 'ERA5'; filetype = 'ERA5L'
 #   dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
@@ -361,7 +361,7 @@ if __name__ == '__main__':
 #   resolution = 'NA10'
   
   grid = None; bias_correction = None
-#   grid = 'snw2'
+  grid = 'snw2'
 #   grid = 'hd1' # small Quebec grid
 #   grid = 'son2'; bias_correction = 'rfbc' # high-res Southern Ontario
 #   grid = 'on1'
@@ -405,8 +405,8 @@ if __name__ == '__main__':
         lxarray = False
 #         process_dataset = 'NRCan'; period = (1997,2018); kwargs = dict()
         kwargs = dict()
-#         period = prdstr # from monthly_normal
-        period = (2011,2018)
+        period = prdstr # from monthly_normal
+#         period = (2011,2018)
 #         period = (1985,2015)
 #         period = (1997,2018)
 #         period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname]) # load regular NRCan normals
@@ -414,10 +414,11 @@ if __name__ == '__main__':
                                 dataset_name=process_dataset, resolution=resolution, **kwargs)
         print(xds)
         print('')
-        xv = list(xds.data_vars.values())[0]
-        print(xv)
         if lxarray:
-            print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+            xv = list(xds.data_vars.values())[0]
+            print(xv)
+            if lxarray:
+                print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
     
     elif mode == 'monthly_normal':
   
@@ -456,27 +457,31 @@ if __name__ == '__main__':
 
         # copy encoding      
         encoding = dict()
-        print('Original Chunks:',chunks)  
-        for varname,cvar in cds.data_vars.items():
-            cks = tuple(1 if dim == 'time' else chunks[dim] for dim in cvar.dims)
-            encoding[varname] = dict(chunksizes=cks, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float            
+        print('Original Chunks:',chunks)
         # save resampled dataset
-        folder, filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='daily', 
+        nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='daily', 
                                              aggregation='clim', dataset_index=default_dataset_index, filetype=filetype)
-        nc_filepath = folder + filename
-        tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
-        # write to NetCDF
-        cds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=[], engine='netcdf4',
-                      encoding=encoding, compute=True)
+        # save to NetCDF file, with all bells and whistles
+        saveXArray(cds, filename=nc_filename, folder=nc_folder, mode='write', varlist=None, chunks=chunks, encoding=None, 
+                   time_agg='month', laddTime=True, time_dim='time', ltmpfile=True, lcompute=True, lprogress=True, lfeedback=True)
         
-        # add name and length of month (doesn't work properly with xarray)
-        ds = nc.Dataset(tmp_filepath, mode='a')
-        ds = addNameLengthMonth(ds, time_dim='time')
-        ds.close()
-        # rename NetCDF file
-        if os.path.exists(nc_filepath): os.remove(nc_filepath)
-        os.rename(tmp_filepath, nc_filepath)
-        
+#         for varname,cvar in cds.data_vars.items():
+#             cks = tuple(1 if dim == 'time' else chunks[dim] for dim in cvar.dims)
+#             encoding[varname] = dict(chunksizes=cks, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float            
+#         nc_filepath = folder + filename
+#         tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
+#         # write to NetCDF
+#         cds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=[], engine='netcdf4',
+#                       encoding=encoding, compute=True)
+#         
+#         # add name and length of month (doesn't work properly with xarray)
+#         ds = nc.Dataset(tmp_filepath, mode='a')
+#         ds = addNameLengthMonth(ds, time_dim='time')
+#         ds.close()
+#         # rename NetCDF file
+#         if os.path.exists(nc_filepath): os.remove(nc_filepath)
+#         os.rename(tmp_filepath, nc_filepath)
+#         
         # print timing
         end = time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
@@ -485,14 +490,17 @@ if __name__ == '__main__':
     elif mode == 'load_TimeSeries':
        
         lxarray = True
-        varname = 'precip'
+        varname = None
         xds = loadMergedForcing_TS(varlist=None, dataset_name=process_dataset, dataset_args=dataset_args, mode='daily', 
                                    resolution=resolution, grid=grid, lxarray=lxarray)
         print(xds)
         print('')
-        xv = xds[varname]
-        print(xv)
         if lxarray:
+            if varname: xv = xds[varname]
+            else:
+                for xv in xds.data_vars.values():
+                    if xv.ndim > 2: break
+            print(xv)
             print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
             print(xv.encoding)
     
@@ -500,34 +508,35 @@ if __name__ == '__main__':
         
         # settings
         lexec = True
-        # auto chunk, but use multiple of chunkf for better workloads (~ 100 MB per chunk)
-        multi_chunks = {dim:4 for dim in ('lat','lon','latitude','longitude','x','y')}
-        multi_chunks['time'] = 92 # close to 2 years with time chunk 8 (default)
         time_slice = None
 #         time_slice = ('2011-01-01','2011-12-31') # inclusive
         varlist = None
         dataset_args = None; filetype = None      
         
         # Merged Forcing
-#         grid = 'son2'
-#         process_dataset = 'MergedForcing'; varlist = {'MergedForcing':None, 'const':None, }
-#         grid = 'son2'; chunks = dict(time=9, x=59, y=59)
-#         resolution = 'SON60'; chunks = dict(time=9, x=60, y=60)
+        process_dataset = 'MergedForcing'; varlist = {'MergedForcing':None, 'const':None, }
+        grid = 'son2'; resolution = 'SON60'
+        grid = 'snw2'
         
 #         # process just NRCan dataset
-        process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5']}
+#         process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5']}
 # #         resolution = 'CA12'; #chunks = dict(time=8, lat=64, lon=63)
 #         grid = 'son2'; resolution = 'SON60'
-        grid = 'snw2'; resolution = 'SON60'
-        
-        if grid == 'son2': multi_chunks['time'] = 82 # closer to 2 years... time chunk is 9
+#         grid = 'snw2'; resolution = 'SON60'
 
 #         # just ERA5-land
+#         process_dataset = 'ERA5'
 #         varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
 #         resolution = 'NA10'; filetype = 'ERA5L'
-#         dataset_args = dict(ERA5=dict(filetype=filetype, lfliplat=True))
+# #         dataset_args = dict(ERA5=dict(filetype=filetype, lfliplat=True))
+#         grid = 'son2'; dataset_args = dict(ERA5=dict(filetype=filetype, lfliplat=False))
 #         if resolution == 'NA10': chunks = dict(time=8, latitude=61, longitude=62)
 #         elif resolution == 'AU10': chunks = dict(time=8, latitude=59, longitude=62)
+        
+        # auto chunk, but use multiple of chunkf for better workloads (~ 100 MB per chunk)
+        multi_chunks = {dim:4 for dim in ('lat','lon','latitude','longitude','x','y')}
+        if grid == 'son2': multi_chunks['time'] = 82 # closer to 2 years... time chunk is 9
+        else: multi_chunks['time'] = 92 # close to 2 years with time chunk 8 (default)
         
 #         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True,
 #                                       resolution=resolution, lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
@@ -549,42 +558,14 @@ if __name__ == '__main__':
         del xds
         gc.collect()
 
-        # setup encoding
-        encoding = dict()
-        print('Original Chunks:',chunks)
-        for varname,rvar in rds.data_vars.items():
-            cks = tuple(1 if dim == 'time' else chunks[dim] for dim in rvar.dims)
-            # N.B.: use chunk size 1 for time and as before for space; monthly chunks make sense, since
-            #       otherwise normals will be expensive to compute (access patterns are not sequential)            
-            encoding[varname] = dict(chunksizes=cks, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float
-            #print(varname,cks,rvar.encoding)
         # define destination file
         nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, grid=grid, resolution=resolution, filetype=filetype,
                                                    bias_correction=bias_correction, mode='daily',aggregation='monthly', 
                                                    dataset_index=default_dataset_index, data_root=None)
-        nc_filepath = nc_folder + nc_filename
-        tmp_filepath = nc_filepath + ( '.tmp' if lexec else '.test' ) # use temporary file during creation
-        print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
-        # write to NetCDF
-        # write results to file (actually just create file)
-        task = rds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], 
-                             engine='netcdf4', encoding=encoding, compute=False)
-        if lexec:
-            task.compute()
-
-            # update time information
-            print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
-            ncds = nc.Dataset(tmp_filepath, mode='a')
-            ncts = addTimeStamps(ncds, units='month') # add time-stamps        
-            ncds.close()
-            # replace original file
-            if os.path.exists(nc_filepath): os.remove(nc_filepath)
-            os.rename(tmp_filepath, nc_filepath)
-        
-        else:
-            print(encoding)
-            print(task)
-            task.visualize(filename=nc_filepath+'.svg')  # This file is never produced
+        print('Original Chunks:',chunks)
+        # save to NetCDF file, with all bells and whistles
+        saveXArray(rds, filename=nc_filename, folder=nc_folder, mode='write', varlist=None, chunks=chunks, encoding=None, 
+                   time_agg='month', laddTime=True, time_dim='time', ltmpfile=True, lcompute=True, lprogress=True, lfeedback=True)
         
         # print timing
         end = time.time()
