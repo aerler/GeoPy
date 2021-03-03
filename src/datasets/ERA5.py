@@ -147,11 +147,11 @@ if __name__ == '__main__':
   modes = []
 #   modes += ['load_Point_Climatology']
 #   modes += ['load_Point_Timeseries']
-  modes += ['derived_variables'     ]
-#   modes += ['load_Daily'            ]
-  modes += ['monthly_mean'          ]
+  # modes += ['derived_variables'     ]
+  modes += ['load_Daily'            ]
+  # modes += ['monthly_mean'          ]
 #   modes += ['load_TimeSeries'       ]
-  modes += ['monthly_normal'        ]
+  # modes += ['monthly_normal'        ]
 #   modes += ['load_Climatology'      ]
 
   grid = None; resampling = None
@@ -240,9 +240,9 @@ if __name__ == '__main__':
   
     elif mode == 'load_Daily':
        
-        #varlist = ['snow','dswe']
+        varlist = ['snow','dswe']
         xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=dataset, grid=grid, 
-                             lautoChunk=False, lgeoref=True)
+                             chunks=True, lgeoref=True)
         print(xds)
 #         print('')
         xv = xds.data_vars['snow']

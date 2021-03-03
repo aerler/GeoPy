@@ -679,7 +679,7 @@ loadShapeTimeSeries  = loadNRCan_ShpTS # time-series without associated grid (e.
 
 if __name__ == '__main__':
   
-#     mode = 'test_daily'
+    mode = 'test_daily'
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
@@ -687,7 +687,7 @@ if __name__ == '__main__':
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
 #     mode = 'convert_Daily'
-    mode = 'convert_to_netcdf'
+    # mode = 'convert_to_netcdf'
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
@@ -784,7 +784,7 @@ if __name__ == '__main__':
     elif mode == 'test_daily':
        
         varlist = ['precip','T2']
-        xds = loadNRCan_Daily(varname=None, varlist=varlist, grid=None, lautoChunk=True, lskip=True)
+        xds = loadNRCan_Daily(varlist=varlist, resolution='CA12', grid=None, chunks=True, lskip=True)
         print(xds)
         print('')
         for varname,xv in xds.variables.items(): 

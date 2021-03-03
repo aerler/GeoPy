@@ -555,7 +555,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   return tuple(griddefs)  
 
 # return name and folder
-def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, lexp=False, exps=None, lreduce=False):
+def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, subfolder=None, lexp=False, exps=None, lreduce=False,):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   if name is None and experiment is None: raise ArgumentError
@@ -609,6 +609,8 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   elif isinstance(folder,str): 
     if not folder.endswith((name,name+'/')): folder = '{:s}/{:s}/'.format(folder,name)
   else: raise TypeError(folder)
+  if subfolder:
+      folder =  '{:s}/{:s}/'.format(folder,subfolder)
   # check types
   if not isinstance(domains,(tuple,list)): raise TypeError()
   if not all(isInt(domains)): raise TypeError()
@@ -1115,31 +1117,28 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
 
 ## functions to load WRF data using xarray, mostly for (sub-)daily timeseries
 
-def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=None, bias_correction=None, 
-                  varlist=None, varatts=None, lfilevaratts=False, lconst=False, lpickleGrid=True, ldropWRFatts=False,  
-                  chunks=None, time_chunks=32, folder=None, resampling=None, exps=None, enses=None, **xrargs):
+def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=None, bias_correction=None, varlist=None, 
+                  varatts=None, lfilevaratts=False, lconst=False, lpickleGrid=True, chunks=None,   
+                  multi_chunks=None, folder=None, subfolder=None, resampling=None, exps=None, enses=None, **xrargs):
     ''' Get a properly formatted xarray Dataset a with high-freuqency time-series data. '''
     return loadWRF_XR(experiment=experiment, name=name, domain=domain, grid=grid, exps=exps, enses=enses, lpickleGrid=lpickleGrid,
                       station=None, shape=None, period=None, mode='daily',  
-                      filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, ldropWRFatts=ldropWRFatts,
-                      bias_correction=bias_correction, chunks=chunks, time_chunks=time_chunks, resampling=resampling,
-                      lfilevaratts=lfilevaratts, folder=folder, **xrargs)  
+                      filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst,
+                      bias_correction=bias_correction, chunks=chunks, multi_chunks=multi_chunks, resampling=resampling,
+                      lfilevaratts=lfilevaratts, folder=folder, subfolder=subfolder, **xrargs)  
 
 # master function to load WRF xarray datasets
 def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None, shape=None, filetypes=None, bias_correction=None, 
                varlist=None, varatts=None, lfilevaratts=False, mode='daily', period=None, lconst=False, lpickleGrid=True, 
-               ldropWRFatts=False, chunks=None, time_chunks=32, folder=None, resampling='bilinear', exps=None, enses=None, **xrargs):
+               chunks=None, multi_chunks=None, folder=None, subfolder=None, resampling='bilinear',
+               exps=None, enses=None, **xrargs):
     ''' Get a properly formatted xarray Dataset from post-processed WRF NetCDF4 files. '''
-    import xarray as xr
-    from datasets.SnoDAS import addGeoReference
-    # some default settings for xarray
-    if chunks is None and time_chunks: chunks = dict(time=time_chunks)
-    xarray_kwargs = dict(decode_times=False, chunks=chunks)
+    from geospatial.xarray_tools import loadXArray
     # determine file and folder
     if experiment is None and name is not None: 
-        experiment = name; name=None # allow 'name' to define an experiment  
+        experiment = name; name = None # allow 'name' to define an experiment
     folder,experiment,name,domain = getFolderNameDomain(name=name, experiment=experiment, domains=domain, 
-                                                        folder=folder, exps=exps, lreduce=True)
+                                                        folder=folder, exps=exps, lreduce=True, subfolder=subfolder)
     # set modes    
     lclim = False; lts = False; ldaily = False # mode switches
     periodstr = ''
@@ -1160,7 +1159,8 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     elif mode.lower() in ('time-series','timeseries'): lts = True
     elif mode.lower() in ('daily','hf'): 
         ldaily = True
-        xarray_kwargs['decode_times'] = True
+    else:
+        raise ValueError(mode)
     # cast/copy varlist
     if isinstance(varlist,str): varlist = [varlist] # cast as list
     elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
@@ -1184,33 +1184,34 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     if 'axes' in filetypes: del filetypes[filetypes.index('axes')] # remove axes - not a real filetype
     if bias_correction: # optional filetype for bias-corrected data
         filetypes = [bias_correction.lower(),]+filetypes # add before others, so that bias-corrected variables are loaded
-    atts = []; filelist = []; typelist = []; ignore_lists = []
+    # get met data from filetypes into dicts
+    atts = {}; filelist = {}; ignore_lists = {}; typelist = []
     for filetype in filetypes: # last filetype in list has precedence
         fileclass = fileclasses[filetype] if filetype in fileclasses else FileType(filetype)
         if lclim and fileclass.climfile is not None: 
-            filelist.append(fileclass.climfile)
+            filelist[filetype] = fileclass.climfile
         elif lts and fileclass.tsfile is not None: 
-            filelist.append(fileclass.tsfile)
+            filelist[filetype] = fileclass.tsfile
         elif ldaily and fileclass.dailyfile is not None: 
-            filelist.append(fileclass.dailyfile)      
+            filelist[filetype] = fileclass.dailyfile
+        ## N.B.: not sure what typelist and ignore_lists were for...
+        ignore_lists[filetype] = fileclass.ignore_list # list of ignore lists
         typelist.append(filetype) # this eliminates const files
-        ignore_lists.append(fileclass.ignore_list) # list of ignore lists
-        # get varatts
+        # get varatts (with common axes)
         att = fileclasses['axes'].atts.copy()
         att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
-        atts.append(att) # list of atts for each filetype    
-    # axes mapping
-    axatts = fileclasses['axes'].atts.copy()
-    axmap = {axname:axatt['name'] for axname,axatt in axatts.items()}
+        atts[filetype] = att # list of atts for each filetype    
     # resolve varatts argument and update default atts
     if varatts is None: pass
     elif isinstance(varatts,dict):
-      if lfilevaratts:
-        for filetype,att in list(varatts.items()):
+      if all([key in filetypes for key in varatts.keys()]):
+        for filetype,att in varatts.items():
           if not isinstance(att, dict): raise TypeError(filetype,att)
-          atts[typelist.index(filetype, )].update(att) # happens in-place
+          atts[filetype].update(att) # happens in-place
+      elif any([key in filetypes for key in varatts.keys()]):
+          raise ValueError(varatts.keys())
       else:
-        for att in atts: att.update(varatts) # happens in-place
+          for att in atts.values(): att.update(varatts) # happens in-place
     elif isinstance(varatts,(list,tuple)):
       for att,varatt in zip(atts,varatts): att.update(varatt) # happens in-place
     else:
@@ -1261,61 +1262,25 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     if grid: 
         folder = '{}/{}'.format(folder,grid)
         if resampling: folder = '{}/{}'.format(folder,resampling)
-    # load variables iteratively from multiple datasets (files)
+    # fill substitutions in filepattern list
+    filelist = {filetype:filepattern.format(domain,gridstr,periodstr) for filetype,filepattern in filelist.items()}
+    geoargs = dict(proj4_string=griddef.projection.ExportToProj4())
+    ## use generic load function from xarray_tools
+    # some default settings for xarray
+    xarray_kwargs = dict(decode_times=ldaily, mask_and_scale=True, combine_attrs='drop') # 'identical','no_conflict','override' and more...
     xarray_kwargs.update(**xrargs)
-    xds = xr.Dataset() # master dataset
-    for filepattern,varatts_dict in zip(filelist,atts):
-        filename = filepattern.format(domain,gridstr,periodstr)
-        filepath = '{}/{}'.format(folder,filename)
-        if not os.path.exists(filepath):
-            raise IOError("Dataset file '{}' not found.".format(filepath))
-        ds = xr.open_dataset(filepath, **xarray_kwargs)
-        # clean up varlist
-        for varname,variable in ds.data_vars.items():
-            # N.B.: this is essentially a custom implementation of updateVariableAttrs from geospatial.xarray_tools
-            if varname in varatts_dict:
-                varatts = varatts_dict[varname]
-                new_name = varname # default
-                if 'name' in varatts: new_name = varatts['name']
-                elif 'atts' in varatts: 
-                    tmpatts = varatts['atts']
-                    if 'name' in tmpatts: new_name = tmpatts['name']
-                if varlist is None or new_name in varlist:
-                    variable = variable.rename({key:value for key,value in axmap.items() if key in variable.dims})
-                    if new_name != varname:
-                        variable.name = new_name
-                    variable.attrs['units'] = varatts['units']
-                    if 'atts' in varatts:
-                        variable.attrs.update(varatts['atts'])
-                    if 'scalefactor' in varatts:
-                        variable *= varatts['scalefactor']
-                    if 'offset' in varatts:
-                        variable += varatts['offset']
-                    # add formatted variable to dataset
-                    xds[new_name] = variable
-            elif varlist is None or varname in varlist:
-                xds[varname] = variable # add original variable
-        # update dataset attributes 
-        if not ldropWRFatts: dsatts = ds.attrs.copy()
-        else: dsatts = {name:att for name,att in ds.attrs.items() if not name.isupper()}
-        xds.attrs.update(dsatts)
-    # raise error if dataset is empty
-    if len(xds.data_vars) == 0:
-        raise EmptyDatasetError(str(xds))
-    # add horizontal coordinates
-    coords = dict(); coord_atts = dict()
-    for ax in (griddef.xlon,griddef.ylat):
-        if ax.name in xds.dims: 
-            coords[ax.name] = ax.data_array
-            coord_atts[ax.name] = ax.atts.copy()
-    if coords: xds = xds.assign_coords(**coords)
-    for axname,axatt in coord_atts.items():
-        xds[axname].attrs.update(axatt)
-    # add projection info
-    #if lgeoref: xds = checkGeoReference(xds, geoargs=geoargs, grid=grid)
-    #xds.attrs['proj4'] = griddef.projection.ExportToProj4()
-    #xds.attrs['geotransform'] = griddef.geotransform()
-    xds = addGeoReference(xds, proj4_string=griddef.projection.ExportToProj4())
+    xds = loadXArray(varlist=varlist, folder=folder, varatts=atts, filelist=filelist, filetypes=filetypes, 
+                     grid=grid, lgeoref=True, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **xarray_kwargs)
+    # homogenize horizontal coordinates (probably not necessary)
+    # if not lstation and not lshape:
+        # coords = dict(); coord_atts = dict()
+        # for ax in (griddef.xlon,griddef.ylat):
+            # if ax.name in xds.dims: 
+                # coords[ax.name] = ax.data_array
+                # coord_atts[ax.name] = ax.atts.copy()
+        # if coords: xds = xds.assign_coords(**coords)
+        # for axname,axatt in coord_atts.items():
+            # xds[axname].attrs.update(axatt)
     # return dataset
     return xds
 
@@ -1347,9 +1312,9 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_daily'
-#   mode = 'test_xarray'  
+  mode = 'test_xarray'  
 #   mode = 'test_climatology'
-  mode = 'test_timeseries'
+  # mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
@@ -1389,9 +1354,9 @@ if __name__ == '__main__':
 #                            varlist=['precip','T2','liqwatflx','pet'], 
 #                            filetypes=['hydro','lsm'], mode='timeseries',
 #                            ldropWRFatts=True, exps=WRF_exps)
-      dataset = loadWRF_Daily(experiment='max-ctrl', domain=2, grid='arb2', resampling='bilinear',
+      dataset = loadWRF_Daily(experiment='max-ctrl', domain=2, grid=None, resampling='bilinear',
                               varlist=['liqwatflx','pet'], 
-                              filetypes=['hydro',], ldropWRFatts=True, exps=WRF_exps)
+                              filetypes=['hydro',], exps=WRF_exps)
 
   
       print(dataset)
