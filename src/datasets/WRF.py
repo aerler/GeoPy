@@ -1264,23 +1264,15 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
         if resampling: folder = '{}/{}'.format(folder,resampling)
     # fill substitutions in filepattern list
     filelist = {filetype:filepattern.format(domain,gridstr,periodstr) for filetype,filepattern in filelist.items()}
-    geoargs = dict(proj4_string=griddef.projection.ExportToProj4())
+    geoargs = dict(proj4_string=griddef.projection.ExportToProj4(), lcreate=True) # create xlon/ylat if necessary
+    geoargs['xlon_coord'] = griddef.xlon.data_array if griddef else None
+    geoargs['ylat_coord'] = griddef.ylat.data_array if griddef else None
     ## use generic load function from xarray_tools
     # some default settings for xarray
     xarray_kwargs = dict(decode_times=ldaily, mask_and_scale=True, combine_attrs='drop') # 'identical','no_conflict','override' and more...
     xarray_kwargs.update(**xrargs)
     xds = loadXArray(varlist=varlist, folder=folder, varatts=atts, filelist=filelist, filetypes=filetypes, 
                      grid=grid, lgeoref=True, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **xarray_kwargs)
-    # homogenize horizontal coordinates (probably not necessary)
-    # if not lstation and not lshape:
-        # coords = dict(); coord_atts = dict()
-        # for ax in (griddef.xlon,griddef.ylat):
-            # if ax.name in xds.dims: 
-                # coords[ax.name] = ax.data_array
-                # coord_atts[ax.name] = ax.atts.copy()
-        # if coords: xds = xds.assign_coords(**coords)
-        # for axname,axatt in coord_atts.items():
-            # xds[axname].attrs.update(axatt)
     # return dataset
     return xds
 
@@ -1354,7 +1346,7 @@ if __name__ == '__main__':
 #                            varlist=['precip','T2','liqwatflx','pet'], 
 #                            filetypes=['hydro','lsm'], mode='timeseries',
 #                            ldropWRFatts=True, exps=WRF_exps)
-      dataset = loadWRF_Daily(experiment='max-ctrl', domain=2, grid=None, resampling='bilinear',
+      dataset = loadWRF_Daily(experiment='max-ctrl', domain=2, grid='arb3', resampling='bilinear',
                               varlist=['liqwatflx','pet'], 
                               filetypes=['hydro',], exps=WRF_exps)
 
