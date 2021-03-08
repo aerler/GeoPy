@@ -1199,6 +1199,7 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
         typelist.append(filetype) # this eliminates const files
         # get varatts (with common axes)
         att = fileclasses['axes'].atts.copy()
+        att.pop('time',None) # time is handled by xarray
         att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
         atts[filetype] = att # list of atts for each filetype    
     # resolve varatts argument and update default atts
