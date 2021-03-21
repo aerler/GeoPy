@@ -24,7 +24,6 @@ from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
 from datasets.misc import getFolderFileName, addConstantFields, loadXRDataset
 # for georeferencing
-from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
 from geospatial.xarray_tools import addGeoReference, updateVariableAttrs, computeNormals, getCommonChunks, saveXArray
 
 ## Meta-vardata
@@ -172,6 +171,8 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
                           shape=None, station=None, mode=None, aggregation=None, period=None, lxarray=True, lgeoref=False, 
                           geoargs=None, ltoMonthly=None, lfromMonthly=False, dataset_args=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
+    if isinstance(varlist, dict):
+        raise NotImplementedError("Loading variables from multiple files or datasets is currently not implemented.")
     # resolve folder and filename
     arg_list = ('resampling', 'resolution', 'bias_correction', 'filetype')
     file_args = {key:kwargs.pop(key,None) for key in arg_list}
@@ -342,16 +343,16 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
-#   work_loads += ['compute_derived']
-#   work_loads += ['load_Daily']
+  # work_loads += ['compute_derived']
+  # work_loads += ['load_Daily']
   work_loads += ['monthly_mean'          ]
   work_loads += ['load_TimeSeries'      ]
   work_loads += ['monthly_normal'        ]
   work_loads += ['load_Climatology'      ]
 
   # some settings
-  process_dataset = 'MergedForcing'
-#   process_dataset = 'NRCan'
+  # process_dataset = 'MergedForcing'
+  process_dataset = 'NRCan'
 #   resolution = 'CA12'
   resolution = 'SON60'
   
@@ -408,8 +409,9 @@ if __name__ == '__main__':
         period = prdstr # from monthly_normal
 #         period = (2011,2018)
 #         period = (1985,2015)
-#         period = (1997,2018)
+        # period = (1997,2018)
 #         period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname]) # load regular NRCan normals
+        
         xds = loadMergedForcing(grid=grid, lxarray=lxarray, period=period, dataset_args=dataset_args, mode='daily',
                                 dataset_name=process_dataset, resolution=resolution, **kwargs)
         print(xds)
@@ -429,7 +431,7 @@ if __name__ == '__main__':
 #         start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
         start_date = None; end_date = None; varlist = None
 #         varlist = ['T2','time_stamp']
-#         process_dataset = 'NRCan'; resolution = 'SON60'
+        process_dataset = 'NRCan'; resolution = 'SON60'
 
         # just ERA5-land
 #         varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
@@ -514,15 +516,15 @@ if __name__ == '__main__':
         dataset_args = None; filetype = None      
         
         # Merged Forcing
-        process_dataset = 'MergedForcing'; varlist = {'MergedForcing':None, 'const':None, }
-        grid = 'son2'; resolution = 'SON60'
-        grid = 'snw2'
+        # process_dataset = 'MergedForcing'; varlist = {'MergedForcing':None, 'const':None, }
+        # grid = 'son2'; resolution = 'SON60'
+        # grid = 'snw2'
         
-#         # process just NRCan dataset
-#         process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5']}
-# #         resolution = 'CA12'; #chunks = dict(time=8, lat=64, lon=63)
-#         grid = 'son2'; resolution = 'SON60'
-#         grid = 'snw2'; resolution = 'SON60'
+        # process just NRCan dataset
+        process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5','liqwatflx']}
+        # resolution = 'CA12'; #chunks = dict(time=8, lat=64, lon=63)
+        # grid = 'son2'; resolution = 'SON60'
+        grid = 'snw2'; resolution = 'SON60'
 
 #         # just ERA5-land
 #         process_dataset = 'ERA5'
@@ -637,11 +639,9 @@ if __name__ == '__main__':
         
         # settings
         lexec = True
-        resolution = None; bias_correction = None; dataset_args = None
+        resolution = None; bias_correction = None; dataset_args = dict(ERA5=dict(filetype='ERA5L'))
 #         lexec = False
-        load_chunks = None; lautoChunkLoad = True  # chunking input should not be necessary, if the source files are chunked properly
-        chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
-        # N.B.: 'lautoChunk' is necessary for *loading* data in chunks - otherwise it loads the whole array at once...
+        load_chunks = True # auto chunk output - this is necessary to maintain proper chunking!
         #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
@@ -652,12 +652,12 @@ if __name__ == '__main__':
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
 #         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
-        derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
+        # derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
 #         derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
 #         derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['snow']); bias_correction = 'rfbc'
-#         derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip'], ERA5=['dswe'])
+        derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip',], ERA5=['dswe'])
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
 #         bias_correction = 'rfbc'
 #         grid = 'son2'; resolution = 'CA12'
@@ -665,10 +665,13 @@ if __name__ == '__main__':
 #         grid = 'son2'; resolution = 'SON60'; load_chunks = dict(time=8, x=59, y=59)
 #         grid = 'son2'
 #         grid = 'snw2'; load_chunks = dict(time=8, x=44, y=55)
-        lautoChunkLoad = False
-        grid = None; load_chunks = dict(time=8, lon=63, lat=64)
-        dataset_args = dict(NRCan=dict(resolution='CA12', grid=None,), 
-                            ERA5=dict(resolution='NA10', grid='ca12', filetype='ERA5L'), )
+        # grid = None; load_chunks = dict(time=8, lon=63, lat=64)
+        # dataset_args = dict(NRCan=dict(resolution='CA12', grid=None,), 
+                            # ERA5=dict(resolution='NA10', grid='ca12', subset='ERA5L'), )
+        grid = 'snw2'
+        dataset_args = dict(NRCan=dict(resolution='SON60', grid=grid,), 
+                            ERA5=dict(resolution='NA10', grid=grid, subset='ERA5L'), )
+
         
         
         # optional slicing (time slicing completed below)
@@ -678,22 +681,21 @@ if __name__ == '__main__':
 #         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
-#         start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
+        start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
 #         start_date = '1981-01-01'; end_date = '2018-01-01' # apparently not inclusive... 
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
         time_slice = (start_date,end_date) # slice time
         dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction=bias_correction, 
-                                          dataset_args=dataset_args, resampling=None, 
-                                          time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
+                                          dataset_args=dataset_args, resampling=None, time_slice=time_slice, chunks=load_chunks,
+                                          multi_chunks='regular')
 #         dataset = dataset.unify_chunks()
         
         
         # load time coordinate
-        tsvar = dataset[ts_name].load()
-               
         print(dataset)
+        tsvar = dataset[ts_name].load()
         
         # loop over variables
         for varname in derived_varlist:
@@ -787,7 +789,7 @@ if __name__ == '__main__':
                     nrcan_res = dataset_args['NRCan'].get('resolution',None)
                 else:
                     raise ValueError(dataset_args)
-                clim_chunks = load_chunks.copy()
+                clim_chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
                 clim_chunks['time'] = 12 # need 
                 if nrcan_res == 'CA12':
                     T2clim = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12', 
@@ -838,8 +840,8 @@ if __name__ == '__main__':
             if 'original_name' in xvar.attrs: del xvar.attrs['original_name'] # does not apply
             xvar.attrs['note'] = note
             # set chunking for operation
-            if lautoChunk:                 
-                chunks = ref_var.encoding['chunksizes'] if xvar.shape == ref_var.shape else autoChunk(xvar.shape)
+            assert xvar.shape == ref_var.shape
+            chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
             if chunks: 
                 xvar = xvar.chunk(chunks=chunks)
             print('Chunks:',chunks)
@@ -866,7 +868,7 @@ if __name__ == '__main__':
             print(nds)
             # file path based on variable parameters
             nc_folder,nc_filename = getFolderFileName(varname=varname, dataset=ds_attrs['name'], resolution=resolution, grid=grid, 
-                                                      resampling=resampling, dataset_index=default_dataset_index)
+                                                      resampling=resampling, dataset_index=default_dataset_index, mode='daily')
             nc_filepath = nc_folder + nc_filename
             tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
             print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))

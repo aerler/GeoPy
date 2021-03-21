@@ -56,7 +56,7 @@ varatts_list['ERA5L'] = dict(# forcing/flux variables
              )
 # list of variables to load
 default_varlists = {name:[atts['name'] for atts in varatts.values()] for name,varatts in varatts_list.items()}
-# list of sub-datasets/filetypes with titles
+# list of sub-datasets/subsets with titles
 DSNT = namedtuple(typename='Dataset', field_names=['name','interval','resolution','title',])
 dataset_attributes = dict(ERA5L = DSNT(name='ERA5L',interval='1h', resolution=0.1, title='ERA5-Land',), # downscaled land reanalysis
                           ERA5S = DSNT(name='ERA5S',interval='1h', resolution=0.3, title='ERA5-Sfc',), # regular surface; not verified
@@ -74,31 +74,31 @@ netcdf_settings = dict(chunksizes=(8,ERA5Land_size[0]/16,ERA5Land_size[1]/32))
 
 ## functions to load NetCDF datasets (using xarray)
 
-def loadERA5_Daily(varname=None, varlist=None, dataset=None, filetype=None, grid=None, resolution=None, shape=None, station=None, 
+def loadERA5_Daily(varname=None, varlist=None, dataset=None, subset=None, grid=None, resolution=None, shape=None, station=None, 
                    resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None, lfliplat=False, aggregation='daily',
                    mode='daily', chunks=True, multi_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily ERA5 data from NetCDF-4 files using xarray and add some projection information '''
     if not ( lxarray and lgeospatial ): 
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
-    if dataset and filetype:
+    if dataset and subset:
         raise ValueError()
-    elif dataset and not filetype: 
-        filetype = dataset
+    elif dataset and not subset: 
+        subset = dataset
     if resolution is None: 
         if grid and grid[:3] in ('son','snw',): resolution = 'SON60'
         else: resolution = 'CA12' # default
     if varatts is None:
-        if grid is None and station is None and shape is None: varatts = varatts_list[filetype] # original files
+        if grid is None and station is None and shape is None: varatts = varatts_list[subset] # original files
     default_varlist = default_varlists.get(dataset, None)
-    xds = loadXRDataset(varname=varname, varlist=varlist, dataset='ERA5', filetype=filetype, grid=grid, resolution=resolution, shape=shape,
+    xds = loadXRDataset(varname=varname, varlist=varlist, dataset='ERA5', subset=subset, grid=grid, resolution=resolution, shape=shape,
                         station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap, mode=mode, 
                         aggregation=aggregation, lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **kwargs)
     # flip latitude dimension
     if lfliplat and 'latitude' in xds.coords:
         xds = xds.reindex(latitude=xds.latitude[::-1])
     # update name and title with sub-dataset
-    xds.attrs['name'] = filetype
-    xds.attrs['title'] = dataset_attributes[filetype].title + xds.attrs['title'][len(filetype)-1:]
+    xds.attrs['name'] = subset
+    xds.attrs['title'] = dataset_attributes[subset].title + xds.attrs['title'][len(subset)-1:]
     return xds
 
 
@@ -269,7 +269,7 @@ if __name__ == '__main__':
 #         derived_varlist = ['dswe',]; load_list = ['snow']
         derived_varlist = ['liqwatflx',]; load_list = ['dswe', 'precip']
         varatts = varatts_list[dataset]
-        xds = loadERA5_Daily(varlist=load_list, filetype=dataset, resolution=resolution, grid=grid, 
+        xds = loadERA5_Daily(varlist=load_list, subset=dataset, resolution=resolution, grid=grid, 
                              lautoChunk=lautoChunk, chunks=chunks, lfliplat=False)
         # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
         print(xds)
@@ -292,7 +292,7 @@ if __name__ == '__main__':
         
             # target dataset
             lskip = False
-            folder,filename = getFolderFileName(varname=varname, dataset='ERA5', filetype=dataset, resolution=resolution, grid=grid, 
+            folder,filename = getFolderFileName(varname=varname, dataset='ERA5', subset=dataset, resolution=resolution, grid=grid, 
                                                 resampling=resampling, mode='daily', lcreateFolder=True)
             nc_filepath = '{}/{}'.format(folder,filename)
             if lappend_master and osp.exists(nc_filepath):

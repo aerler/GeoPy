@@ -16,7 +16,7 @@ from geodata.misc import DatasetError, ArgumentError
 from datasets.common import getRootFolder
 from geospatial.xarray_tools import loadXArray, default_lat_coords, default_lon_coords
 
-def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None, bias_correction=None, grid=None, resampling=None, 
+def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, bias_correction=None, grid=None, resampling=None, 
                       mode=None, aggregation=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None, 
                       data_root=None, **kwargs):
     ''' function to provide the folder and filename for the requested dataset parameters '''
@@ -45,18 +45,18 @@ def getFolderFileName(varname=None, dataset=None, filetype=None, resolution=None
         dataset = dataset_index.get(varname,'MergedForcing')
     # dataset-specific settings
     if dataset.lower() == 'mergedforcing' or dataset.lower() == 'merged': 
-        filetype = 'merged'; dataset = 'MergedForcing'
+        subset = 'merged'; dataset = 'MergedForcing'
         resolution = None
     elif dataset.lower() == 'nrcan':
         if not resolution: resolution = 'CA12' # default
-        filetype = dataset.lower() # no filetypes
+        subset = dataset.lower() # no subsets
     elif dataset[:4].lower() == 'era5' and len(dataset) > 4:
-        if filetype is None: filetype = dataset.lower() 
+        if subset is None: subset = dataset.lower() 
         dataset = 'era5'
     else:
-        if filetype is None: filetype = dataset.lower()
+        if subset is None: subset = dataset.lower()
     # folder and filename strings
-    ds_str_folder = ds_str_file = filetype.lower()
+    ds_str_folder = ds_str_file = subset.lower()
     # resolution
     if resolution: ds_str_file += '_' + resolution.lower()
     # construct filename
@@ -163,12 +163,12 @@ def addConstantFields(xds, const_list=None, grid=None):
 
 
 def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_correction=None, resolution=None, 
-                  period=None, shape=None, station=None, mode='daily', aggregation=None, filetype=None, 
+                  period=None, shape=None, station=None, mode='daily', aggregation=None, subset=None, 
                   resampling=None, varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,  
                   lgeoref=True, geoargs=None, chunks=True, multi_chunks=None, lskip=False, **kwargs):
     ''' load data from standardized NetCDF files into an xarray Dataset '''
     # first, get folder and filename pattern
-    folder,filename = getFolderFileName(varname='{var:s}', dataset=dataset, filetype=filetype, resolution=resolution, grid=grid,
+    folder,filename = getFolderFileName(varname='{var:s}', dataset=dataset, subset=subset, resolution=resolution, grid=grid,
                                         bias_correction=bias_correction, resampling=resampling, period=period, mode=mode,  
                                         aggregation=aggregation, shape=shape, station=station, lcreateFolder=False, dataset_index=None)
     # load XR dataset
@@ -199,7 +199,7 @@ if __name__ == '__main__':
     if mode == 'loadXR':
         
         xds = loadXRDataset(varname=None, varlist=['precip','T2'], dataset='NRCan', grid='snw2', bias_correction=None, resolution='SON60', 
-                            period=None, shape=None, station=None, mode='daily', filetype=None, resampling=None, 
+                            period=None, shape=None, station=None, mode='daily', subset=None, resampling=None, 
                             varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,  
                             lgeoref=True, geoargs=None, chunks=None, lautoChunk=False, lskip=False,)
         print(xds)
@@ -207,7 +207,7 @@ if __name__ == '__main__':
     elif mode == 'filefolder':
         
         # test with generic variable place holder
-        folder,filename = getFolderFileName(varname='{VAR:s}', dataset='NRCan', filetype=None, resolution=None, bias_correction=None, 
+        folder,filename = getFolderFileName(varname='{VAR:s}', dataset='NRCan', subset=None, resolution=None, bias_correction=None, 
                                             grid='snw2', resampling=None, mode='daily', period=None, shape=None, station=None, 
                                             lcreateFolder=False, dataset_index=None)
         print(folder)
