@@ -169,12 +169,12 @@ class MyFigure(Figure):
     margins['top'] = pos.top; margins['bottom'] = pos.bottom
     margins['wspace'] = pos.wspace; margins['hspace'] = pos.hspace
     # update subplot margins
-    if mode == 'move': margins.update(kwargs)
+    if mode.lower() in ('set','move','adjust'): margins.update(kwargs)
     else: 
       for key,val in kwargs.items():
         if key in margins:
-          if mode == 'shift': margins[key] += val
-          elif mode == 'scale': margins[key] *= val
+          if mode.lower() == 'shift': margins[key] += val
+          elif mode.lower() == 'scale': margins[key] *= val
     # finally, actually update figure
     self.subplots_adjust(**margins)
     # and now repair damage: restore axes
