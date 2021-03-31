@@ -174,7 +174,7 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
     if isinstance(varlist, dict):
         raise NotImplementedError("Loading variables from multiple files or datasets is currently not implemented.")
     # resolve folder and filename
-    arg_list = ('resampling', 'resolution', 'bias_correction', 'filetype')
+    arg_list = ('resampling', 'resolution', 'bias_correction', 'subset')
     file_args = {key:kwargs.pop(key,None) for key in arg_list}
     if dataset_args is not None and dataset_name in dataset_args: 
         dataset_args = dataset_args[dataset_name]
@@ -345,8 +345,8 @@ if __name__ == '__main__':
 #   work_loads += ['print_grid']
   # work_loads += ['compute_derived']
   # work_loads += ['load_Daily']
-  # work_loads += ['monthly_mean'          ]
-  # work_loads += ['load_TimeSeries'      ]
+  work_loads += ['monthly_mean'          ]
+  work_loads += ['load_TimeSeries'      ]
   work_loads += ['monthly_normal'        ]
   work_loads += ['load_Climatology'      ]
 
@@ -356,13 +356,14 @@ if __name__ == '__main__':
 #   resolution = 'CA12'
   resolution = 'SON60'
   
-#   process_dataset = 'ERA5'; filetype = 'ERA5L'
-#   dataset_args = dict(ERA5=dict(filetype='ERA5L', lfliplat=True))
-# #   resolution = 'AU10'
-#   resolution = 'NA10'
+  process_dataset = 'ERA5'; subset = 'ERA5L'
+  dataset_args = dict(ERA5=dict(subset='ERA5L', lfliplat=True))
+  resolution = 'AU10'
+  # resolution = 'NA10'
   
   grid = None; bias_correction = None
   grid = 'snw2'
+  grid = 'qel1'
 #   grid = 'hd1' # small Quebec grid
 #   grid = 'son2'; bias_correction = 'rfbc' # high-res Southern Ontario
 #   grid = 'on1'
@@ -428,16 +429,18 @@ if __name__ == '__main__':
 #         start_date = '2011-01'; end_date = '2011-12'; varlist = None
 #         start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
 #         start_date = '1985-01'; end_date = '2014-12'; varlist = None # date ranges are inclusive
-#         start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
-        start_date = '2003-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
+        start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
+        # start_date = '2003-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
         # start_date = None; end_date = None; varlist = None
 #         varlist = ['T2','time_stamp']
-        process_dataset = 'NRCan'; resolution = 'SON60'
+        # process_dataset = 'NRCan'; resolution = 'SON60'
 
         # just ERA5-land
-#         varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
-#         resolution = 'AU10'; filetype = 'ERA5L'
-#         dataset_args = dict(ERA5=dict(filetype='ERA5L'))
+        process_dataset = 'ERA5'; subset = 'ERA5L'
+        #varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
+        dataset_args = dict(ERA5=dict(subset=subset))
+        resolution = 'AU10'; grid = 'qel1'
+        # resolution = 'NA10'; grid = 'snw2'
 
         
         # start operation
@@ -463,7 +466,7 @@ if __name__ == '__main__':
         print('Original Chunks:',chunks)
         # save resampled dataset
         nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='daily', 
-                                             aggregation='clim', dataset_index=default_dataset_index, filetype=filetype)
+                                             aggregation='clim', dataset_index=default_dataset_index, subset=subset)
         # save to NetCDF file, with all bells and whistles
         saveXArray(cds, filename=nc_filename, folder=nc_folder, mode='write', varlist=None, chunks=chunks, encoding=None, 
                    time_agg='month', laddTime=True, time_dim='time', ltmpfile=True, lcompute=True, lprogress=True, lfeedback=True)
@@ -521,20 +524,19 @@ if __name__ == '__main__':
         # grid = 'son2'; resolution = 'SON60'
         # grid = 'snw2'
         
-        # process just NRCan dataset
-        process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5','liqwatflx']}
-        # resolution = 'CA12'; #chunks = dict(time=8, lat=64, lon=63)
-        # grid = 'son2'; resolution = 'SON60'
-        grid = 'snw2'; resolution = 'SON60'
+        # # process just NRCan dataset
+        # process_dataset = 'NRCan'; varlist = {'NRCan':None, 'const':None, 'MergedForcing':['liqwatflx_ne5','liqwatflx']}
+        # # resolution = 'CA12'; #chunks = dict(time=8, lat=64, lon=63)
+        # # grid = 'son2'; resolution = 'SON60'
+        # grid = 'snw2'; resolution = 'SON60'
 
-#         # just ERA5-land
-#         process_dataset = 'ERA5'
-#         varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
-#         resolution = 'NA10'; filetype = 'ERA5L'
-# #         dataset_args = dict(ERA5=dict(filetype=filetype, lfliplat=True))
-#         grid = 'son2'; dataset_args = dict(ERA5=dict(filetype=filetype, lfliplat=False))
-#         if resolution == 'NA10': chunks = dict(time=8, latitude=61, longitude=62)
-#         elif resolution == 'AU10': chunks = dict(time=8, latitude=59, longitude=62)
+        # just ERA5-land
+        process_dataset = 'ERA5'; subset = 'ERA5L'
+        varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
+        dataset_args = dict(ERA5=dict(subset=subset, lfliplat=True))
+        # resolution = 'NA10'; grid = 'son2'
+        # resolution = 'NA10'; grid = 'snw2'
+        resolution = 'AU10'; grid = 'qel1'
         
         # auto chunk, but use multiple of chunkf for better workloads (~ 100 MB per chunk)
         multi_chunks = {dim:4 for dim in ('lat','lon','latitude','longitude','x','y')}
@@ -562,7 +564,7 @@ if __name__ == '__main__':
         gc.collect()
 
         # define destination file
-        nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, grid=grid, resolution=resolution, filetype=filetype,
+        nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, grid=grid, resolution=resolution, subset=subset,
                                                    bias_correction=bias_correction, mode='daily',aggregation='monthly', 
                                                    dataset_index=default_dataset_index, data_root=None)
         print('Original Chunks:',chunks)

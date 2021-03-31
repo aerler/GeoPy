@@ -41,8 +41,8 @@ SON10_grid = GridDefinition(name=dataset_name, projection=None, geotransform=ERA
 varatts_list = dict()
 # attributes of variables in ERA5-Land
 varatts_list['ERA5L'] = dict(# forcing/flux variables
-             tp   = dict(name='precip', units='kg/m^2/s',scalefactor=1./86400., long_name='Total Precipitation'), # units of meters water equiv. / day
-             pev  = dict(name='pet_era5', units='kg/m^2/s',scalefactor=1./86400., long_name='Potential Evapotranspiration'), # units of meters water equiv. / day
+             tp   = dict(name='precip', units='kg/m^2/s',scalefactor=1000./86400., long_name='Total Precipitation'), # units of meters water equiv. / day
+             pev  = dict(name='pet_era5', units='kg/m^2/s',scalefactor=1000./86400., long_name='Potential Evapotranspiration'), # units of meters water equiv. / day
              # state variables
              sd   = dict(name='snow',  units='kg/m^2', scalefactor=1.e3, long_name='Snow Water Equivalent'), # units of meters water equivalent
              # axes (don't have their own file)
@@ -81,12 +81,13 @@ def loadERA5_Daily(varname=None, varlist=None, dataset=None, subset=None, grid=N
     if not ( lxarray and lgeospatial ): 
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
     if dataset and subset:
-        raise ValueError()
+        if dataset != subset:
+            raise ValueError((dataset,subset))
     elif dataset and not subset: 
         subset = dataset
     if resolution is None: 
         if grid and grid[:3] in ('son','snw',): resolution = 'SON60'
-        else: resolution = 'CA12' # default
+        else: resolution = 'NA10' # default
     if varatts is None:
         if grid is None and station is None and shape is None: varatts = varatts_list[subset] # original files
     default_varlist = default_varlists.get(dataset, None)
@@ -241,7 +242,7 @@ if __name__ == '__main__':
     elif mode == 'load_Daily':
        
         varlist = ['snow','dswe']
-        xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=dataset, grid=grid, 
+        xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=None, subset='ERA5L', grid=grid, 
                              chunks=True, lgeoref=True)
         print(xds)
 #         print('')
