@@ -430,6 +430,7 @@ if __name__ == '__main__':
 #         start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
 #         start_date = '1985-01'; end_date = '2014-12'; varlist = None # date ranges are inclusive
         start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
+        # start_date = '1981-01'; end_date = None; varlist = None # date ranges are inclusive
         # start_date = '2003-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
         # start_date = None; end_date = None; varlist = None
 #         varlist = ['T2','time_stamp']
@@ -439,8 +440,10 @@ if __name__ == '__main__':
         process_dataset = 'ERA5'; subset = 'ERA5L'
         #varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
         dataset_args = dict(ERA5=dict(subset=subset))
-        resolution = 'AU10'; grid = 'qel1'
+        # resolution = 'AU10'; grid = 'qel1'
+        resolution = 'AU10'; grid = None
         # resolution = 'NA10'; grid = 'snw2'
+        # resolution = 'NA10'; grid = None
 
         
         # start operation
@@ -533,10 +536,12 @@ if __name__ == '__main__':
         # just ERA5-land
         process_dataset = 'ERA5'; subset = 'ERA5L'
         varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
-        dataset_args = dict(ERA5=dict(subset=subset, lfliplat=True))
-        # resolution = 'NA10'; grid = 'son2'
+        dataset_args = dict(ERA5=dict(subset=subset, lfliplat=True, combine_attrs='override'))
+        #resolution = 'NA10'; grid = 'son2'
         # resolution = 'NA10'; grid = 'snw2'
-        resolution = 'AU10'; grid = 'qel1'
+        # resolution = 'NA10'; grid = None
+        # resolution = 'AU10'; grid = 'qel1'
+        resolution = 'AU10'; grid = None
         
         # auto chunk, but use multiple of chunkf for better workloads (~ 100 MB per chunk)
         multi_chunks = {dim:4 for dim in ('lat','lon','latitude','longitude','x','y')}

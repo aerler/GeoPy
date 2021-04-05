@@ -303,7 +303,7 @@ def checkGeoReference(xds, geoargs=None, grid=None):
 
 def loadSnoDAS_Daily(varname=None, varlist=None, grid=None, bias_correction=None, shape=None, station=None, 
                      resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None,  
-                     chunks=None, lautoChunk=False, time_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
+                     chunks=None, multi_chunks=False, time_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
@@ -311,7 +311,7 @@ def loadSnoDAS_Daily(varname=None, varlist=None, grid=None, bias_correction=None
         default_varlist = bc_varlists.get(bias_correction, netcdf_varlist) # only variables available with that bias correction
         xds = loadXRDataset(varname=varname, varlist=varlist, dataset='SnoDAS', grid=grid, bias_correction=bias_correction, shape=shape,
                             station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap,  
-                            lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
+                            lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **kwargs)
     else:
         warn('DEPRECATION WARNING: this is only for backwards compatibility and should not be used; use lgeospatial=True instead.')
         if time_chunks: chunks = dict(time=time_chunks) # shorthand - only for backwards compatibility
