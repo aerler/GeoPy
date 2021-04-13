@@ -42,7 +42,7 @@ varatts_list = dict()
 # attributes of variables in ERA5-Land
 varatts_list['ERA5L'] = dict(# forcing/flux variables
              tp   = dict(name='precip', units='kg/m^2/s',scalefactor=1000./86400., long_name='Total Precipitation'), # units of meters water equiv. / day
-             pev  = dict(name='pet_era5', units='kg/m^2/s',scalefactor=1000./86400., long_name='Potential Evapotranspiration'), # units of meters water equiv. / day
+             pev  = dict(name='pet_era5', units='kg/m^2/s',scalefactor=-1000./86400., long_name='Potential Evapotranspiration'), # units of meters water equiv. / day; negative values
              # state variables
              sd   = dict(name='snow',  units='kg/m^2', scalefactor=1.e3, long_name='Snow Water Equivalent'), # units of meters water equivalent
              # axes (don't have their own file)
@@ -148,8 +148,8 @@ if __name__ == '__main__':
   modes = []
 #   modes += ['load_Point_Climatology']
 #   modes += ['load_Point_Timeseries']
-  # modes += ['derived_variables'     ]
-  modes += ['load_Daily'            ]
+  modes += ['derived_variables'     ]
+  # modes += ['load_Daily'            ]
   # modes += ['monthly_mean'          ]
 #   modes += ['load_TimeSeries'       ]
   # modes += ['monthly_normal'        ]
@@ -160,7 +160,7 @@ if __name__ == '__main__':
   dataset = 'ERA5L'
 #   resolution = 'SON10'
   resolution = 'NA10'
-#   resolution = 'AU10'
+  # resolution = 'AU10'
   
   # variable list
 #   varlist = ['snow']
@@ -261,17 +261,15 @@ if __name__ == '__main__':
             
         lexec = True
         lappend_master = False
-        lautoChunk = False
-        if resolution == 'NA10': chunks = dict(time=8, latitude=61, longitude=62)
-        elif resolution == 'AU10': chunks = dict(time=8, latitude=59, longitude=62)
         ts_name = 'time_stamp'
         dataset = 'ERA5L'
+        load_chunks = True
         # load variables
 #         derived_varlist = ['dswe',]; load_list = ['snow']
         derived_varlist = ['liqwatflx',]; load_list = ['dswe', 'precip']
         varatts = varatts_list[dataset]
         xds = loadERA5_Daily(varlist=load_list, subset=dataset, resolution=resolution, grid=grid, 
-                             lautoChunk=lautoChunk, chunks=chunks, lfliplat=False)
+                             chunks=load_chunks, lfliplat=False)
         # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
         print(xds)
         
@@ -349,8 +347,7 @@ if __name__ == '__main__':
                         del xvar.attrs[att] # does not apply anymore  
                 xvar.attrs['note'] = note
                 # set chunking for operation
-                if lautoChunk:                 
-                    chunks = autoChunk(xvar.shape)
+                chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
                 if chunks: 
                     if isinstance(chunks,dict):
                         chunks = tuple(chunks[dim] for dim in xvar.dims)                        

@@ -343,12 +343,12 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']  
 #   work_loads += ['print_grid']
-  # work_loads += ['compute_derived']
+  work_loads += ['compute_derived']
   # work_loads += ['load_Daily']
-  work_loads += ['monthly_mean'          ]
-  work_loads += ['load_TimeSeries'      ]
-  work_loads += ['monthly_normal'        ]
-  work_loads += ['load_Climatology'      ]
+  # work_loads += ['monthly_mean'          ]
+  # work_loads += ['load_TimeSeries'      ]
+  # work_loads += ['monthly_normal'        ]
+  # work_loads += ['load_Climatology'      ]
 
   # some settings
   # process_dataset = 'MergedForcing'
@@ -362,7 +362,7 @@ if __name__ == '__main__':
   # resolution = 'NA10'
   
   grid = None; bias_correction = None
-  grid = 'snw2'
+  # grid = 'snw2'
   grid = 'qel1'
 #   grid = 'hd1' # small Quebec grid
 #   grid = 'son2'; bias_correction = 'rfbc' # high-res Southern Ontario
@@ -441,7 +441,7 @@ if __name__ == '__main__':
         #varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
         dataset_args = dict(ERA5=dict(subset=subset))
         # resolution = 'AU10'; grid = 'qel1'
-        resolution = 'AU10'; grid = None
+        # resolution = 'AU10'; grid = None
         # resolution = 'NA10'; grid = 'snw2'
         # resolution = 'NA10'; grid = None
 
@@ -539,9 +539,9 @@ if __name__ == '__main__':
         dataset_args = dict(ERA5=dict(subset=subset, lfliplat=True, combine_attrs='override'))
         #resolution = 'NA10'; grid = 'son2'
         # resolution = 'NA10'; grid = 'snw2'
-        # resolution = 'NA10'; grid = None
+        resolution = 'NA10'; grid = None
         # resolution = 'AU10'; grid = 'qel1'
-        resolution = 'AU10'; grid = None
+        #resolution = 'AU10'; grid = None
         
         # auto chunk, but use multiple of chunkf for better workloads (~ 100 MB per chunk)
         multi_chunks = {dim:4 for dim in ('lat','lon','latitude','longitude','x','y')}
@@ -884,7 +884,7 @@ if __name__ == '__main__':
             print(dataset.attrs)
             var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype) # should be float
             task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                          encoding={varname:var_enc,}, compute=False)
+                                 encoding={varname:var_enc,}, compute=False)
             if lexec:
                 task.compute()
             else:
