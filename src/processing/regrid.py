@@ -221,8 +221,8 @@ if __name__ == '__main__':
 #     periods += [5]
 #     periods += [7]
 #     periods += [10]
-    periods += [15]
-#     periods += [30]
+    # periods += [15]
+    periods += [30]
 #     periods = [(2010,2016)]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
@@ -237,7 +237,7 @@ if __name__ == '__main__':
 #     datasets += ['PRISM',]; lLTM = True; periods = None
 #     datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
 #     datasets += ['NARR'] 
-#     datasets += ['GPCC', 'CRU']; lLTM = False #resolutions['GPCC'] = ['025','05']
+    datasets += ['GPCC', 'CRU']; lLTM = True #resolutions['GPCC'] = ['025','05']
 #     datasets += ['SnoDAS']; periods = [(2011,2019)]; NP=1 # large fields...
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -250,9 +250,9 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
-#     WRF_project = 'GreatLakes' # only GreatLakes experiments
+    # WRF_project = 'GreatLakes' # only GreatLakes experiments
     WRF_project = 'WesternCanada' # only WesternCanada experiments
-#     WRF_experiments = None # use None to process all WRF experiments
+    # WRF_experiments = None # use None to process all WRF experiments
     WRF_experiments = []
 #     WRF_experiments += ['erai-wc2']    
 #     WRF_experiments += ['3km-ensemble','erai-3km','max-3km','max-3km-2100'][2:]
@@ -276,8 +276,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['t-ensemble']
-    WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
-    WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
+    # WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
+    # WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
 #     WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
@@ -313,9 +313,10 @@ if __name__ == '__main__':
 #     resolutions['SnoDAS']=('','rfbc'); NP = 2 # smaller fields 
     # grid to project onto
     grids = dict()
+    grids['qel1'] = None # 10 km grid for Queensland, Australia
 #     grids['arb1'] = None # high-res grid for Athabasca river basin, 1km    
 #     grids['arb2'] = None # high-res grid for Athabasca river basin, 5km
-    grids['arb3'] = None # smaller high-res grid for Athabasca river basin, 5km    
+    # grids['arb3'] = None # smaller high-res grid for Athabasca river basin, 5km    
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['uph1'] = None # grid for Elisha, 5km

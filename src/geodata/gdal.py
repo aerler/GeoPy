@@ -685,6 +685,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         # determine GDAL data type        
         if self.dtype == 'float32': gdt = gdal.GDT_Float32
         elif self.dtype == 'float64': gdt = gdal.GDT_Float64
+        elif self.dtype == 'int8': gdt = gdal.GDT_Int16
         elif self.dtype == 'int16': gdt = gdal.GDT_Int16
         elif self.dtype == 'int32': gdt = gdal.GDT_Int32
         elif np.issubdtype(self.dtype,(float,np.inexact)):
@@ -693,7 +694,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           data = data.astype('i2'); gdt = gdal.GDT_Int16  
         elif np.issubdtype(self.dtype,(bool,np.bool)):
           data = data.astype('i2'); gdt = gdal.GDT_Int16  
-        else: raise TypeError('Cannot translate numpy data type into GDAL data type!')
+        else: raise TypeError('Cannot translate numpy data type into GDAL data type! {}'.format(self.dtype))
         #print self.name, self.dtype, data.dtype
         # create GDAL dataset 
         xe = len(self.xlon); ye = len(self.ylat) 
