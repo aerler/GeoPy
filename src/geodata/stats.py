@@ -523,23 +523,23 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       assert res.shape == rshape
       if lpval: pvar = res
       elif lrho: rvar = res
-    newaxes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
-    if keepdims:
-        remaxes = [ax.name for ax in newaxes]
-        newaxes = []; newshp = []
-        for ax in sample1.axes:
-            if ax.name in remaxes:
-                # make copy of old axis as is
-                newaxes.append(ax.copy()); newshp.append(len(ax))
-            else:
-                # create a new axis with same attributes but length 1 and NaN as coordinate vectore
-                newax = Axis(coord=[np.NaN], atts=ax.atts)
-                newaxes.append(newax); newshp.append(1)
-        if lrho: rvar = rvar.reshape(newshp)
-        if lpval: pvar = pvar.reshape(newshp)
     if asVar:
-      if lrho: rvar = Variable(data=rvar, axes=newaxes, atts=rvaratts, plot=rvarplot)
-      if lpval: pvar = Variable(data=pvar, axes=newaxes, atts=pvaratts, plot=pvarplot)
+        newaxes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
+        if keepdims:
+            remaxes = [ax.name for ax in newaxes]
+            newaxes = []; newshp = []
+            for ax in sample1.axes:
+                if ax.name in remaxes:
+                    # make copy of old axis as is
+                    newaxes.append(ax.copy()); newshp.append(len(ax))
+                else:
+                    # create a new axis with same attributes but length 1 and NaN as coordinate vectore
+                    newax = Axis(coord=[np.NaN], atts=ax.atts)
+                    newaxes.append(newax); newshp.append(1)
+            if lrho: rvar = rvar.reshape(newshp)
+            if lpval: pvar = pvar.reshape(newshp)
+        if lrho: rvar = Variable(data=rvar, axes=newaxes, atts=rvaratts, plot=rvarplot)
+        if lpval: pvar = Variable(data=pvar, axes=newaxes, atts=pvaratts, plot=pvarplot)
   # return results
   if lrho and lpval: return rvar, pvar
   elif lpval: return pvar

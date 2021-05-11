@@ -52,7 +52,7 @@ class BaseVarTest(unittest.TestCase):
     #print data
     self.data = data
     # create axis instances
-    t = Axis(name='time', units='month', coord=(0,te-1,te)) # January == 0
+    t = Axis(name='time', units='month since 1979-01', coord=(0,te-1,te)) # January == 0
     y = Axis(name='y', units='none', coord=(1,ye,ye))
     x = Axis(name='x', units='none', coord=(1,xe,xe))
     self.axes = (t,y,x)
