@@ -685,14 +685,14 @@ if __name__ == "__main__":
 #     specific_tests += ['SharedColorbar']
 #     specific_tests += ['LogSurfacePlot']
     # LinePlot
-#     specific_tests += ['BasicLinePlot']
+    # specific_tests += ['BasicLinePlot']
 #     specific_tests += ['TimeAxisPlot']
 #     specific_tests += ['BasicErrorPlot']
 #     specific_tests += ['FancyErrorPlot']
 #     specific_tests += ['FancyBandPlot']
 #     specific_tests += ['AdvancedLinePlot']
-#     specific_tests += ['CombinedLinePlot']
-    specific_tests += ['AxesGridLinePlot']    
+    specific_tests += ['CombinedLinePlot']
+    # specific_tests += ['AxesGridLinePlot']    
 #     specific_tests += ['MeanAxisPlot']
     # DistPlot
 #     specific_tests += ['BasicHistogram']

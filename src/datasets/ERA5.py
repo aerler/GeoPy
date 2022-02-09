@@ -18,7 +18,6 @@ from collections import namedtuple
 from datasets.common import getRootFolder
 from geodata.gdal import GridDefinition
 from datasets.misc import loadXRDataset, getFolderFileName
-from geospatial.netcdf_tools import autoChunk
 
 
 ## Meta-vardata
@@ -59,8 +58,8 @@ default_varlists = {name:[atts['name'] for atts in varatts.values()] for name,va
 # list of sub-datasets/subsets with titles
 DSNT = namedtuple(typename='Dataset', field_names=['name','interval','resolution','title',])
 dataset_attributes = dict(ERA5L = DSNT(name='ERA5L',interval='1h', resolution=0.1, title='ERA5-Land',), # downscaled land reanalysis
-                          ERA5S = DSNT(name='ERA5S',interval='1h', resolution=0.3, title='ERA5-Sfc',), # regular surface; not verified
-                          ERA5A = DSNT(name='ERA5A',interval='6h', resolution=0.3, title='ERA5-Atm',),) # regular 3D; not verified                          
+                          ERA5S = DSNT(name='ERA5S',interval='1h', resolution=0.25, title='ERA5-Sfc',), # regular surface; not verified
+                          ERA5A = DSNT(name='ERA5A',interval='6h', resolution=0.25, title='ERA5-Atm',),) # regular 3D; not verified                          
 
 # settings for NetCDF-4 files
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
