@@ -85,6 +85,9 @@ def loadC1W(varname=None, varlist=None, dataset=None, subset=None, grid=None, re
     xds = loadXRDataset(varname=varname, varlist=varlist, dataset='C1W', subset=subset, grid=grid, resolution=resolution, shape=shape,
                         station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap, mode=mode,
                         aggregation=aggregation, lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **kwargs)
+    # convert longitudes from 0-360 to -180-180
+    lon = xds.attrs['xlon']; lon_data = xds[lon].data
+    xds = xds.assign_coords(**{ lon : np.where(lon_data>180, lon_data-360, lon_data) })
     # update name and title with sub-dataset
     xds.attrs['name'] = subset
     xds.attrs['title'] = dataset_attributes[subset].title + xds.attrs['title'][len(subset)-1:]
@@ -167,10 +170,11 @@ if __name__ == '__main__':
         pass
         lxarray = False
         varname = varlist[0]
-        xds = loadC1W(varlist=varlist, resolution=resolution, dataset=dataset, decode_times=False, )
+        xds = loadC1W(varlist=varlist, resolution=resolution, dataset=dataset, )
         print(xds)
         print('')
         xv = xds[varname]
         print(xv)
+        print(xv.name)
         if lxarray:
             print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
