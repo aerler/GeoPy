@@ -167,33 +167,21 @@ def smooth_image(im, window='gauss', n=10, ny=None):
     for j in np.arange(ny//2,oy-(ny//2)):
         S[:,j] = np.r_[ 2*im[0,j-(ny//2)]-im[n//2:0:-1,j-(ny//2)], 
             im[:,j-(ny//2)], 2*im[-1,j-(ny//2)]-im[-2:-(n//2)-2:-1,j-(ny//2)] ]
-    TL_1 = np.zeros((n//2,ny//2))
-    TR_1 = np.zeros((n//2,ny//2))
-    BL_1 = np.zeros((n//2,ny//2))
-    BR_1 = np.zeros((n//2,ny//2))
+    TL = np.zeros((n//2,ny//2))
+    TR = np.zeros((n//2,ny//2))
+    BL = np.zeros((n//2,ny//2))
+    BR = np.zeros((n//2,ny//2))
     for i in np.arange(ox-(n//2),ox):
-        TL_1[i-ox+(n//2),:] = 2*S[i,ny//2]-S[i,2*(ny//2):ny//2:-1] 
-        TR_1[i-ox+(n//2),:] = 2*S[i,-1-(ny//2)]-S[i,-2-(ny//2):-2*(ny//2)-2:-1] 
+        TL[i-ox+(n//2),:] = 2*S[i,ny//2]-S[i,2*(ny//2):ny//2:-1] 
+        TR[i-ox+(n//2),:] = 2*S[i,-1-(ny//2)]-S[i,-2-(ny//2):-2*(ny//2)-2:-1] 
     for i in np.arange(n//2):
-        BL_1[i,:] = 2*S[i,ny//2]-S[i,2*(ny//2):ny//2:-1]
-        BR_1[i,:] = 2*S[i,-1-(ny//2)]-S[i,-2-(ny//2):-2*(ny//2)-2:-1] 
-    TL_2 = np.zeros((n//2,ny//2))
-    TR_2 = np.zeros((n//2,ny//2))
-    BL_2 = np.zeros((n//2,ny//2))
-    BR_2 = np.zeros((n//2,ny//2))
-    for j in np.arange(oy-(ny//2),oy):
-        BR_2[:,j-oy+(ny//2)] = 2*S[n//2,j]-S[2*(n//2):n//2:-1,j] 
-        TR_2[:,j-oy+(ny//2)] = 2*S[-1-(n//2),j]-S[-2-(n//2):-2*(n//2)-2:-1,j] 
-    for j in np.arange(ny//2):
-        BL_2[:,j] = 2*S[n//2,j]-S[2*(n//2):n//2:-1,j]
-        TL_2[:,j] = 2*S[-1-(n//2),j]-S[-2-(n//2):-2*(n//2)-2:-1,j]
-    S[0:n//2,0:ny//2] = (BL_1+BL_2)*0.5
-    S[ox-(n//2):ox,0:ny//2] = (TL_1+TL_2)*0.5
-    S[0:n//2,oy-(ny//2):oy] = (BR_1+BR_2)*0.5
-    S[ox-(n//2):ox,oy-(ny//2):oy] =(TR_1+TR_2)*0.5
+        BL[i,:] = 2*S[i,ny//2]-S[i,2*(ny//2):ny//2:-1]
+        BR[i,:] = 2*S[i,-1-(ny//2)]-S[i,-2-(ny//2):-2*(ny//2)-2:-1] 
+    S[0:n//2,0:ny//2] = BL
+    S[ox-(n//2):ox,0:ny//2] = TL
+    S[0:n//2,oy-(ny//2):oy] = BR
+    S[ox-(n//2):ox,oy-(ny//2):oy] = TR
     improc = signal.convolve(S,g,mode='same')
-    #print(np.sum(np.abs(TL_1-TL_2)>1e-12)+np.sum(np.abs(TR_1-TR_2)>1e-12)+
-    #    np.sum(np.abs(BL_1-BL_2)>1e-12)+np.sum(np.abs(BR_1-BR_2)>1e-12))
     return(improc[n//2:-(n//2),ny//2:-(ny//2)])
 
 
