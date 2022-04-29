@@ -10,7 +10,7 @@ class UnmaskAndPad(object):
     ''' decorator class to preprocess arrays for smoothing '''
     
     def __init__(self, smoother):
-        ''' store the smoothign operation we are going to apply '''
+        ''' store the smoothing operation we are going to apply '''
         self.smoother = smoother
 
     def __call__(self, data, pad_value=0, **kwargs):
@@ -55,7 +55,7 @@ def smooth(x, window_len=11, window='hanning'):
     
     This method is based on the convolution of a scaled window with the signal.
     The signal is prepared by introducing reflected copies of the signal 
-    (with the window size) in both ends so that transient parts are minimized
+    (with the appropriate size) in both ends so that transient parts are minimized
     in the begining and end part of the output signal.
     
     input:
@@ -86,15 +86,15 @@ def smooth(x, window_len=11, window='hanning'):
         raise ValueError("smooth only accepts 1 dimension arrays.")
 
     if x.size < window_len:
-        raise ValueError("Input vector needs to be bigger than window size.")
+        raise ValueError("Input vector needs to be of equal size or bigger than window size.")
 
     if window_len < 3:
         return x
 
     if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+        raise ValueError("Window should be one of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
-    s=np.r_[2*x[0]-x[window_len:1:-1], x, 2*x[-1]-x[-1:-window_len:-1]]
+    s=np.r_[ 2*x[0]-x[window_len//2:0:-1], x, 2*x[-1]-x[-2:-(window_len//2)-2:-1] ]
     #print(len(s))
     
     if window == 'flat': #moving average
@@ -102,33 +102,87 @@ def smooth(x, window_len=11, window='hanning'):
     else:
         w = getattr(np, window)(window_len)
     y = np.convolve(w/w.sum(), s, mode='same')
-    return y[window_len-1:-window_len+1]
+    return y[window_len//2:-(window_len//2)]
 
 
 #*********** part2: 2d
 
 from scipy import signal
 
-def gauss_kern(size, sizey=None):
-    """ Returns a normalized 2D gauss kernel array for convolutions """
+def twoDim_kern(size, window, sizey=None):
+    """ Returns a normalized 2D kernel array for convolutions """    
     size = int(size)
     if not sizey:
         sizey = size
     else:
-        sizey = int(sizey)
-    x, y = np.mgrid[-size:size+1, -sizey:sizey+1]
-    g = np.exp(-(x**2/float(size) + y**2/float(sizey)))
-    return g / g.sum()
+        sizey = int(sizey)    
+    x, y = np.mgrid[-size:size+1, -sizey:sizey+1]    
+    if window=='gauss':
+        g = np.exp(-(x**2/float(size) + y**2/float(sizey)))
+    elif window=='flat':
+        g = np.ones((size,sizey))
+    elif window=='hanning':
+        g1d_x = np.hanning(size)
+        g1d_y = np.hanning(sizey)        
+        g = np.sqrt(np.outer(g1d_x,g1d_y))
+    elif window=='hamming':
+        g1d_x = np.hamming(size)
+        g1d_y = np.hamming(sizey)        
+        g = np.sqrt(np.outer(g1d_x,g1d_y))
+    elif window=='bartlett':
+        g1d_x = np.bartlett(size)
+        g1d_y = np.bartlett(sizey)        
+        g = np.sqrt(np.outer(g1d_x,g1d_y))
+    elif window=='blackman':    
+        g1d_x = np.blackman(size)
+        g1d_y = np.blackman(sizey)        
+        Temp = np.outer(g1d_x,g1d_y)
+        Temp[np.abs(Temp)<1e-15] = 0        
+        g = np.sqrt(Temp) 
+        # NOTE: For the blackman window some elements have tiny negative values which
+        #   become problematic when taking the square root. So I've added the above
+        #   code to fix this.
+    return g/g.sum()
 
 @UnmaskAndPad
-def smooth_image(im, n=10, ny=None, mode='valid') :
-    """ blurs the image by convolving with a gaussian kernel of typical
+def smooth_image(im, window='gauss', n=10, ny=None):
+    """ blurs the image by convolving with a kernel of typical
         size n. The optional keyword argument ny allows for a different
         size in the y direction.
     """
-    g = gauss_kern(n, sizey=ny)
-    improc = signal.convolve(im, g, mode=mode)
-    return(improc)
+    n = int(n)
+    if not ny:
+        ny = n
+    else:
+        ny = int(ny)
+    g = twoDim_kern(size=n,window=window,sizey=ny) 
+    [mx,my] = im.shape
+    ox = 2*(n//2)+mx
+    oy = 2*(ny//2)+my
+    S = np.zeros((ox,oy))
+    S[n//2:-(n//2),ny//2:-(ny//2)] = im
+    for i in np.arange(n//2,ox-(n//2)):
+        S[i,:] = np.r_[ 2*im[i-(n//2),0]-im[i-(n//2),ny//2:0:-1], im[i-(n//2),:], 
+            2*im[i-(n//2),-1]-im[i-(n//2),-2:-(ny//2)-2:-1] ]
+    for j in np.arange(ny//2,oy-(ny//2)):
+        S[:,j] = np.r_[ 2*im[0,j-(ny//2)]-im[n//2:0:-1,j-(ny//2)], 
+            im[:,j-(ny//2)], 2*im[-1,j-(ny//2)]-im[-2:-(n//2)-2:-1,j-(ny//2)] ]
+    TL = np.zeros((n//2,ny//2))
+    TR = np.zeros((n//2,ny//2))
+    BL = np.zeros((n//2,ny//2))
+    BR = np.zeros((n//2,ny//2))
+    for i in np.arange(ox-(n//2),ox):
+        TL[i-ox+(n//2),:] = 2*S[i,ny//2]-S[i,2*(ny//2):ny//2:-1] 
+        TR[i-ox+(n//2),:] = 2*S[i,-1-(ny//2)]-S[i,-2-(ny//2):-2*(ny//2)-2:-1] 
+    for i in np.arange(n//2):
+        BL[i,:] = 2*S[i,ny//2]-S[i,2*(ny//2):ny//2:-1]
+        BR[i,:] = 2*S[i,-1-(ny//2)]-S[i,-2-(ny//2):-2*(ny//2)-2:-1] 
+    S[0:n//2,0:ny//2] = BL
+    S[ox-(n//2):ox,0:ny//2] = TL
+    S[0:n//2,oy-(ny//2):oy] = BR
+    S[ox-(n//2):ox,oy-(ny//2):oy] = TR
+    improc = signal.convolve(S,g,mode='same')
+    return(improc[n//2:-(n//2),ny//2:-(ny//2)])
 
 
 def smooth_demo():
@@ -145,7 +199,7 @@ def smooth_demo():
 
     windows=['flat', 'hanning', 'hamming', 'bartlett', 'blackman']
 
-    plt.hold(True)
+    #plt.hold(True)
     for w in windows[1:]:
         #eval('plt.plot('+w+'(ws) )')
         plt.plot(getattr(np, w)(ws))
@@ -158,12 +212,40 @@ def smooth_demo():
     plt.plot(x)
     plt.plot(xn)
     for w in windows:
-        plt.plot(smooth(xn,10,w))
+        plt.plot(smooth(xn,window_len=10,window=w))
     l = ['original signal', 'signal with noise']
     l.extend(windows)
     plt.legend(l)
     plt.title("Smoothing a noisy signal")
     #plt.show()
+
+
+def smooth_image_demo():
+    import matplotlib.pyplot as plt
+    
+    windows=['gauss', 'flat', 'hanning', 'hamming', 'bartlett', 'blackman']    
+    
+    X, Y = np.mgrid[-70:70, -70:70]
+    Z = np.cos((X**2+Y**2)/200.)+ np.random.normal(size=X.shape)
+    
+    plt.figure()
+    plt.subplot(121)
+    plt.imshow(Z)
+    plt.title("The perturbed signal")
+    
+    for w in windows:
+        [n,ny] = Z.shape
+        g = twoDim_kern(size=31,window=w)
+        Z2 = smooth_image(Z,window=w,n=5)
+        plt.figure()
+        plt.subplot(121)
+        plt.imshow(g) 
+        plt.colorbar(orientation="horizontal")
+        plt.title("Weight function "+w)
+        plt.subplot(122)
+        plt.imshow(Z2)  
+        plt.colorbar(orientation="horizontal")
+        plt.title("Smoothed using window "+w)
 
 
 if __name__=='__main__':
@@ -174,12 +256,5 @@ if __name__=='__main__':
     smooth_demo()
     
     # part 2: 2d
-    X, Y = np.mgrid[-70:70, -70:70]
-    Z = np.cos((X**2+Y**2)/200.)+ np.random.normal(size=X.shape)
-    Z2 = smooth_image(Z, 3)
-    plt.figure()
-    plt.imshow(Z)
-    plt.figure()
-    plt.imshow(Z2)
-    plt.show()
+    smooth_image_demo()
     
