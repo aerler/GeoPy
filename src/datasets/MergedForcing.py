@@ -25,6 +25,7 @@ from geodata.gdal import addGDALtoDataset
 from datasets.misc import getFolderFileName, addConstantFields, loadXRDataset
 # for georeferencing
 from geospatial.xarray_tools import addGeoReference, updateVariableAttrs, computeNormals, getCommonChunks, saveXArray
+from geospatial.netcdf_tools import addTimeStamps
 
 ## Meta-vardata
 
@@ -363,7 +364,7 @@ if __name__ == '__main__':
 
   grid = None; bias_correction = None
   # grid = 'snw2'
-  grid = 'son2'
+  # grid = 'son2'
 #   grid = 'hd1' # small Quebec grid
 #   grid = 'son2'; bias_correction = 'rfbc' # high-res Southern Ontario
 #   grid = 'on1'
@@ -657,13 +658,13 @@ if __name__ == '__main__':
 #         derived_varlist = ['dask_test']; load_list = ['T2']
 #         derived_varlist = ['pet_pt']; load_list = ['T2']
 #         derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
-        derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
+        # derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
 #         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
         # derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
-#         derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
+        # derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
 #         derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
-        # derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
+        derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['snow']); bias_correction = 'rfbc'
         # derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip',], ERA5=['dswe'])
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
@@ -676,7 +677,7 @@ if __name__ == '__main__':
         # grid = None; load_chunks = dict(time=8, lon=63, lat=64)
         # dataset_args = dict(NRCan=dict(resolution='CA12', grid=None,),
                             # ERA5=dict(resolution='NA10', grid='ca12', subset='ERA5L'), )
-        grid = 'son2'; resolution = 'NA12'
+        grid = None; resolution = 'NA12'
         dataset_args = dict(NRCan=dict(resolution='NA12', grid=grid, resampling='cubic_spline'),
                             ERA5=dict(resolution='NA10', grid=grid, subset='ERA5L'), )
 
@@ -693,7 +694,7 @@ if __name__ == '__main__':
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
         # start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
         # start_date = '1981-01-01'; end_date = '2020-09-01' # apparently not inclusive...
-        start_date = '1981-01-01'; end_date = '2020-12-31' # apparently not inclusive...
+        # start_date = '1981-01-01'; end_date = '2020-12-31' # apparently not inclusive...
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
 
         # load datasets
@@ -706,7 +707,7 @@ if __name__ == '__main__':
 
         # load time coordinate
         print(dataset)
-        tsvar = dataset[ts_name].load()
+        tsvar = dataset[ts_name].load() if ts_name in dataset else None
 
         # loop over variables
         for varname in derived_varlist:
@@ -801,7 +802,8 @@ if __name__ == '__main__':
                 else:
                     raise ValueError(dataset_args)
                 clim_chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
-                clim_chunks['time'] = 12 # need
+                print(clim_chunks)
+                clim_chunks['time'] = 12  # need
                 if nrcan_res == 'CA12':
                     T2clim = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12',
                                                grid=grid, lxarray=True, lgeoref=False, chunks=None)['T2'].load().rename(time='month')
@@ -809,6 +811,8 @@ if __name__ == '__main__':
                 elif nrcan_res == 'SON60':
                     T2clim = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1997,2018), resolution='SON60',
                                             grid=grid, lxarray=True, lgeoref=False, chunks=clim_chunks)['T2'].load().rename(time='month')
+                else:
+                    raise ValueError(f"No climatology available for this resolution/grid: '{nrcan_res}'")
                 print('Size of T2 climatology:',T2clim.nbytes/1024/1024,'MB')
                 dataset['climT2'] = T2clim
                 # process timeseries
@@ -846,7 +850,7 @@ if __name__ == '__main__':
             # define/copy metadata
             xvar.attrs = ref_var.attrs.copy()
             xvar.rename(varname)
-            for att in ('name','units','long_name',):
+            for att in ('name', 'units','long_name',):
                 if att in default_varatts: xvar.attrs[att] = default_varatts[att]
             if 'original_name' in xvar.attrs: del xvar.attrs['original_name'] # does not apply
             xvar.attrs['note'] = note
@@ -855,7 +859,7 @@ if __name__ == '__main__':
             chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
             if chunks:
                 xvar = xvar.chunk(chunks=chunks)
-            print('Chunks:',chunks)
+            print('Chunks:', chunks)
 
             # create a dataset for export to new file
             ds_attrs = dataset.attrs.copy()
@@ -872,14 +876,16 @@ if __name__ == '__main__':
                 if 'resampling' in xvar.attrs: del xvar.attrs['resampling']
                 if 'resampling' in ds_attrs: del ds_attrs['resampling']
                 resampling = None
-            proj4_str = dataset.attrs['proj4']
-            nds = xr.Dataset({ts_name:tsvar, varname:xvar,}, attrs=ds_attrs)
-            nds = addGeoReference(nds, proj4_string=proj4_str, )
+            if tsvar is None:
+                nds = xr.Dataset({varname:xvar,}, attrs=ds_attrs)
+            else:
+                nds = xr.Dataset({ts_name:tsvar, varname:xvar,}, attrs=ds_attrs)
+            nds = addGeoReference(nds, proj4_string=dataset.attrs.get('proj4', None), )
             print('\n')
             print(nds)
             # file path based on variable parameters
-            nc_folder,nc_filename = getFolderFileName(varname=varname, dataset=ds_attrs['name'], resolution=resolution, grid=grid,
-                                                      resampling=resampling, dataset_index=default_dataset_index, mode='daily')
+            nc_folder, nc_filename = getFolderFileName(varname=varname, dataset=ds_attrs['name'], resolution=resolution, grid=grid,
+                                                       resampling=resampling, dataset_index=default_dataset_index, mode='daily')
             nc_filepath = nc_folder + nc_filename
             tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
             print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
@@ -887,13 +893,18 @@ if __name__ == '__main__':
             print(dataset.attrs)
             var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype) # should be float
             task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                                 encoding={varname:var_enc,}, compute=False)
+                                 encoding={varname:var_enc}, compute=False)
             if lexec:
                 task.compute()
             else:
                 print(var_enc)
                 print(task)
-                task.visualize(filename=nc_folder+'netcdf.svg')  # This file is never produced
+                task.visualize(filename=nc_folder + 'netcdf.svg')  # This file is never produced
+
+            # add timestamps, if necessary
+            if tsvar is None:
+                ncds = nc.Dataset(tmp_filepath, mode='a', format='NETCDF4', clobber=False)
+                addTimeStamps(ncds, time='time', units=None, atts=None)
 
             # replace original file
             if os.path.exists(nc_filepath): os.remove(nc_filepath)
