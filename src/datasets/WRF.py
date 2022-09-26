@@ -25,6 +25,7 @@ from warnings import warn
 from collections import OrderedDict
 from utils.constants import precip_thresholds
 from utils.misc import datetimeSampling, toDatetime64
+from datasets.misc import detectGridResampling
 
 dataset_name = 'WRF' # dataset name
 root_folder = getRootFolder(dataset_name=dataset_name)
@@ -555,7 +556,8 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   return tuple(griddefs)  
 
 # return name and folder
-def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, subfolder=None, lexp=False, exps=None, lreduce=False,):
+def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, subfolder=None, lexp=False, 
+                        exps=None, lreduce=False, mode=None, grid=None, resampling=None):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   if name is None and experiment is None: raise ArgumentError
@@ -609,8 +611,11 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, s
   elif isinstance(folder,str): 
     if not folder.endswith((name,name+'/')): folder = '{:s}/{:s}/'.format(folder,name)
   else: raise TypeError(folder)
+  # handle subfolders
   if subfolder:
       folder =  '{:s}/{:s}/'.format(folder,subfolder)
+  elif mode.lower() == 'daily':
+      folder = detectGridResampling(folder, grid=grid, resampling=resampling)
   # check types
   if not isinstance(domains,(tuple,list)): raise TypeError()
   if not all(isInt(domains)): raise TypeError()
@@ -1138,7 +1143,7 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     if experiment is None and name is not None: 
         experiment = name; name = None # allow 'name' to define an experiment
     folder,experiment,name,domain = getFolderNameDomain(name=name, experiment=experiment, domains=domain, 
-                                                        folder=folder, exps=exps, lreduce=True, subfolder=subfolder)
+                                                        folder=folder, exps=exps, lreduce=True, subfolder=subfolder,)
     # set modes    
     lclim = False; lts = False; ldaily = False # mode switches
     periodstr = ''
@@ -1259,10 +1264,9 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
         lconst = False # don't load constants (some constants are already in the file anyway)
     #print(griddef)
     ## assemble dataset
-    if lconst: raise NotImplementedError()   
-    if grid: 
-        folder = '{}/{}'.format(folder,grid)
-        if resampling: folder = '{}/{}'.format(folder,resampling)
+    if lconst: raise NotImplementedError()
+    if mode.lower() == 'daily':
+        folder = detectGridResampling(folder, grid=grid, resampling=resampling)
     # fill substitutions in filepattern list
     filelist = {filetype:filepattern.format(domain,gridstr,periodstr) for filetype,filepattern in filelist.items()}
     geoargs = dict(proj4_string=griddef.projection.ExportToProj4(), lcreate=True) # create xlon/ylat if necessary

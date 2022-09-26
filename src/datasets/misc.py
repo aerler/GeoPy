@@ -16,8 +16,37 @@ from geodata.misc import DatasetError, ArgumentError
 from datasets.common import getRootFolder
 from geospatial.xarray_tools import loadXArray, default_lat_coords, default_lon_coords
 
-def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, bias_correction=None, grid=None, resampling=None, 
-                      mode=None, aggregation=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None, 
+
+def detectGridResampling(folder, grid=None, resampling=None):
+    if grid:
+        folder = '{}/{}'.format(folder, grid)  # non-native grids are stored in sub-folders
+    if resampling is None:
+        # complicated auto-detection of resampling folders ...
+        old_folder = os.getcwd()
+        os.chdir(folder)
+        # inspect folder
+        nc_file = False; default_folder = False; folder_list = []
+        for item in os.listdir():
+            if os.path.isfile(item):
+                if item.endswith('.nc'): nc_file = True
+            elif os.path.isdir(item):
+                if item.lower() == 'default': default_folder = item
+                folder_list.append(item)
+            else:
+                raise IOError(item)
+        os.chdir(old_folder) # return
+        # evaluate findings
+        if nc_file: resampling = None
+        elif default_folder: resampling = default_folder
+        elif len(folder_list) == 1: resampling = folder_list[0]
+    if resampling:
+        folder = '{}/{}'.format(folder, resampling) # different resampling options are stored in subfolders
+    # return updated folder
+    return folder
+
+
+def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, bias_correction=None, grid=None, resampling=None,
+                      mode=None, aggregation=None, period=None, shape=None, station=None, lcreateFolder=True, dataset_index=None,
                       data_root=None, **kwargs):
     ''' function to provide the folder and filename for the requested dataset parameters '''
     # select some defaults, mainly for backwards compatibility
@@ -62,8 +91,8 @@ def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, 
     # construct filename
     gridstr = '_' + grid.lower() if grid else ''
     # add shape or station identifier in front of grid
-    if shape and station: 
-        raise DatasetError((shape,station))
+    if shape and station:
+        raise DatasetError((shape, station))
     elif shape: gridstr = '_' + shape.lower() + gridstr
     elif station: gridstr = '_' + station.lower() + gridstr
     bcstr = '_' + bias_correction.lower() if bias_correction else ''
@@ -71,8 +100,8 @@ def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, 
     else: name_str = bcstr + gridstr
     agg_str = aggregation.lower()
     if period is None: pass
-    elif isinstance(period,str): agg_str += '_'+period
-    elif isinstance(period,(tuple,list)): agg_str += '_{}-{}'.format(*period)
+    elif isinstance(period, str): agg_str += '_'+period
+    elif isinstance(period, (tuple, list)): agg_str += '_{}-{}'.format(*period)
     else: raise NotImplementedError(period)
     filename = '{}{}_{}.nc'.format(ds_str_file, name_str, agg_str)
     # construct folder
@@ -83,34 +112,12 @@ def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, 
     if mode.lower() == 'avg':
         folder += ds_str_folder+'avg'
     else:
-        folder += ds_str_folder+'_'+mode.lower()
-        if grid: 
-            folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
-            if resampling is None:
-                # complicated auto-detection of resampling folders ... 
-                old_folder = os.getcwd()
-                os.chdir(folder)
-                # inspect folder
-                nc_file = False; default_folder = False; folder_list = []
-                for item in os.listdir():
-                    if os.path.isfile(item):
-                        if item.endswith('.nc'): nc_file = True
-                    elif os.path.isdir(item):
-                        if item.lower() == 'default': default_folder = item
-                        folder_list.append(item)
-                    else:
-                        raise IOError(item)
-                os.chdir(old_folder) # return
-                # evaluate findings
-                if nc_file: resampling = None
-                elif default_folder: resampling = default_folder
-                elif len(folder_list) == 1: resampling = folder_list[0]
-            if resampling: 
-                folder = '{}/{}'.format(folder,resampling) # different resampling options are stored in subfolders                
+        folder += ds_str_folder + '_'+mode.lower()
+        folder = detectGridResampling(folder, grid=grid, resampling=resampling)
     if folder[-1] != '/': folder += '/'
     if lcreateFolder: os.makedirs(folder, exist_ok=True)
     # return folder and filename
-    return folder,filename
+    return folder, filename
 
 
 def addConstantFields(xds, const_list=None, grid=None):
@@ -159,21 +166,21 @@ def addConstantFields(xds, const_list=None, grid=None):
             xds['lon2D'] = xvar 
     if 'zs' in const_list:
         print("Loading of surface/topographic elevation is not yet implemented")
-    return xds        
+    return xds
 
 
-def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_correction=None, resolution=None, 
-                  period=None, shape=None, station=None, mode='daily', aggregation=None, subset=None, 
-                  resampling=None, varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,  
+def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_correction=None, resolution=None,
+                  period=None, shape=None, station=None, mode='daily', aggregation=None, subset=None,
+                  resampling=None, varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,
                   lgeoref=True, geoargs=None, chunks=True, multi_chunks=None, lskip=False, **kwargs):
     ''' load data from standardized NetCDF files into an xarray Dataset '''
     # first, get folder and filename pattern
-    folder,filename = getFolderFileName(varname='{var:s}', dataset=dataset, subset=subset, resolution=resolution, grid=grid,
-                                        bias_correction=bias_correction, resampling=resampling, period=period, mode=mode,  
-                                        aggregation=aggregation, shape=shape, station=station, lcreateFolder=False, dataset_index=None)
+    folder, filename = getFolderFileName(varname='{var:s}', dataset=dataset, subset=subset, resolution=resolution, grid=grid,
+                                         bias_correction=bias_correction, resampling=resampling, period=period, mode=mode,
+                                         aggregation=aggregation, shape=shape, station=station, lcreateFolder=False, dataset_index=None)
     # load XR dataset
-    xds = loadXArray(varname=varname, varlist=varlist, folder=folder, varatts=varatts, filename_pattern=filename,  
-                     default_varlist=default_varlist, varmap=varmap, mask_and_scale=mask_and_scale, grid=grid,  
+    xds = loadXArray(varname=varname, varlist=varlist, folder=folder, varatts=varatts, filename_pattern=filename,
+                     default_varlist=default_varlist, varmap=varmap, mask_and_scale=mask_and_scale, grid=grid,
                      lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, lskip=lskip, **kwargs)
     # supplement annotation/attributes
     if bias_correction is not None and 'bias_correction' not in xds.attrs: xds.attrs['bias_correction'] = bias_correction

@@ -123,10 +123,12 @@ def loadNRCan_Daily(varname=None, varlist=None, grid=None, resolution=None, shap
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
     if resolution is None:
         if grid and grid[:3] in ('son','snw',): resolution = 'SON60'
-        else: resolution = 'CA12' # default
-    elif resolution.upper() == 'NA12' and grid == None:
+        else: resolution = 'NA12' # default
+    if resolution.upper() == 'NA12' and grid == None:
         # some defaults for new NA12 daily data
-        if varatts is None: varatts = na12_varatts
+        if varatts is None:
+            varatts = tsvaratts.copy()
+            varatts.update(na12_varatts)
         if 'combine_attrs' not in kwargs: kwargs['combine_attrs'] = 'drop_conflicts'
 
     default_varlist = res_varlists.get(resolution, None)

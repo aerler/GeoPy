@@ -34,7 +34,7 @@ root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='HGS') # ge
 
 # attributes of variables in different collections
 # Axes and static variables
-axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), # time coordinate
+axes_varatts = dict(time = dict(name='time', long_name='Time'), # time coordinate (units handled by xarray)
                     lon = dict(name='lon', units='deg', long_name='Longitude'), # longitude coordinate
                     lat = dict(name='lat', units='deg', long_name='Latitude'), # latitude coordinate
                     x  = dict(name='x', units='m', long_name='Easting'),
@@ -139,6 +139,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
             if key not in argslist and key in ds_args: del ds_args[key]
         # load time series and and apply some formatting to vars
         ds = loadFunction(varlist=varlist, compat=compat, join=join, fill_value=fill_value, **ds_args)
+        if ldebug: print(ds)
         # add some dataset attributes to variables, since we will be merging datasets
         for var in ds.variables.values(): var.attrs['dataset_name'] = dataset_name
         for key in global_ds_atts_keys: # list of dataset-specific arguments that have to be controlled
@@ -156,6 +157,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
     # merge datasets and attributed
     if ldebug: print("Merging Datasets:", compat, join, '\n')
     xds = xr.merge(ds_list, compat=compat, join=join, fill_value=fill_value)
+    if ldebug: print(xds)
     for ds in ds_list[::-1]: xds.attrs.update(ds.attrs) # we want MergedForcing to have precedence
     xds.attrs['name'] = 'MergedForcing'; xds.attrs['title'] = 'Merged Forcing Daily Timeseries'
     for key,value in global_ds_atts_dict.items():
@@ -322,7 +324,13 @@ if __name__ == '__main__':
 
   import dask
   dask.config.set(**{'array.slicing.split_large_chunks': False}) # suppress warnings about large chunks
-  dask.config.set(temporary_directory='G:/Data/TMP/')
+  # dask.config.set(temporary_directory='G:/Data/TMP/')
+
+  # configure dask client
+  # from dask.distributed import Client
+  # dask_client = Client(n_workers=2, threads_per_worker=2, memory_limit='1GB')
+  # dask_client = Client(n_workers=1, threads_per_worker=1,)
+  # print(dask_client)  # to show dashboard
 
 #   # turn caching off
 #   from dask.cache import Cache
@@ -648,12 +656,10 @@ if __name__ == '__main__':
 
         # settings
         lexec = True
+        # lexec = False
         resolution = None; bias_correction = None; dataset_args = dict(ERA5=dict(filetype='ERA5L'))
-#         lexec = False
         load_chunks = True # auto chunk output - this is necessary to maintain proper chunking!
-        #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
-#         chunks = (9, 59, 59); lautoChunk = False
-#         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
+        # load_chunks = dict(time=64, lat=480, lon=464)
         clim_stns = ['UTM','Elora']
 #         derived_varlist = ['dask_test']; load_list = ['T2']
 #         derived_varlist = ['pet_pt']; load_list = ['T2']
@@ -664,9 +670,9 @@ if __name__ == '__main__':
         # derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
         # derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
 #         derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
-        derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
+        # derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['snow']); bias_correction = 'rfbc'
-        # derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip',], ERA5=['dswe'])
+        derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip',], ERA5=['dswe'], )
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
 #         bias_correction = 'rfbc'
 #         grid = 'son2'; resolution = 'CA12'
@@ -677,31 +683,31 @@ if __name__ == '__main__':
         # grid = None; load_chunks = dict(time=8, lon=63, lat=64)
         # dataset_args = dict(NRCan=dict(resolution='CA12', grid=None,),
                             # ERA5=dict(resolution='NA10', grid='ca12', subset='ERA5L'), )
-        grid = None; resolution = 'NA12'
-        dataset_args = dict(NRCan=dict(resolution='NA12', grid=grid, resampling='cubic_spline'),
-                            ERA5=dict(resolution='NA10', grid=grid, subset='ERA5L'), )
+        # grid = None; resolution = 'NA12'
+        dataset_args = dict(NRCan=dict(resolution='NA12',),
+                            ERA5=dict(resolution='NA10', subset='ERA5L', grid='na12'), )
 
         # if grid == 'son2' and load_chunks:
         #     load_chunks = {'time':72, 'y':59, 'x':59}
 
 
         # optional slicing (time slicing completed below)
-        start_date = None; end_date = None # auto-detect available data
+        # start_date = None; end_date = None # auto-detect available data
 #         start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
 #         start_date = '2011-01-01'; end_date = '2011-04-01'
 #         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
         # start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
-        # start_date = '1981-01-01'; end_date = '2020-09-01' # apparently not inclusive...
+        start_date = '1981-01-01'; end_date = '2020-08-31'  # currently available ERA5-Land data
         # start_date = '1981-01-01'; end_date = '2020-12-31' # apparently not inclusive...
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
 
         # load datasets
-        time_slice = (start_date,end_date) # slice time
+        time_slice = (start_date, end_date) # slice time
         dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction=bias_correction,
                                           dataset_args=dataset_args, resampling=None, time_slice=time_slice, chunks=load_chunks,
-                                          multi_chunks='tiny')
+                                          multi_chunks='small', join='override', ldebug=False)
 #         dataset = dataset.unify_chunks()
 
 
@@ -849,6 +855,7 @@ if __name__ == '__main__':
 
             # define/copy metadata
             xvar.attrs = ref_var.attrs.copy()
+            if 'history' in xvar.attrs: del xvar.attrs['history']
             xvar.rename(varname)
             for att in ('name', 'units','long_name',):
                 if att in default_varatts: xvar.attrs[att] = default_varatts[att]
@@ -857,12 +864,13 @@ if __name__ == '__main__':
             # set chunking for operation
             assert xvar.shape == ref_var.shape
             chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
-            if chunks:
-                xvar = xvar.chunk(chunks=chunks)
-            print('Chunks:', chunks)
+            # if chunks:
+            #     xvar = xvar.chunk(chunks=chunks)
+            print('NetCDF Chunks:', chunks)
 
             # create a dataset for export to new file
             ds_attrs = dataset.attrs.copy()
+            if 'history' in ds_attrs: del ds_attrs['history']
             if varname in default_dataset_index:
                 orig_ds_name = default_dataset_index[varname]
                 ds_attrs['name'] = orig_ds_name
@@ -880,7 +888,7 @@ if __name__ == '__main__':
                 nds = xr.Dataset({varname:xvar,}, attrs=ds_attrs)
             else:
                 nds = xr.Dataset({ts_name:tsvar, varname:xvar,}, attrs=ds_attrs)
-            nds = addGeoReference(nds, proj4_string=dataset.attrs.get('proj4', None), )
+            nds = addGeoReference(nds, proj4_string=ds_attrs.get('proj4', None), )
             print('\n')
             print(nds)
             # file path based on variable parameters
@@ -890,8 +898,9 @@ if __name__ == '__main__':
             tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation
             print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
             # write to NetCDF
-            print(dataset.attrs)
+            print(nds.attrs)
             var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype) # should be float
+            print(var_enc)
             task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                                  encoding={varname:var_enc}, compute=False)
             if lexec:
@@ -905,6 +914,7 @@ if __name__ == '__main__':
             if tsvar is None:
                 ncds = nc.Dataset(tmp_filepath, mode='a', format='NETCDF4', clobber=False)
                 addTimeStamps(ncds, time='time', units=None, atts=None)
+                ncds.close()
 
             # replace original file
             if os.path.exists(nc_filepath): os.remove(nc_filepath)
