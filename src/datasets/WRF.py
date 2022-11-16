@@ -510,8 +510,8 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   wgs84.SetWellKnownGeogCS("WGS84") # set to regular lat/lon
 #   wgs84.ImportFromEPSG(4326) # for some reason this causes an OGR Error...
   tx = osr.CoordinateTransformation(wgs84, projection) # transformation object
-  cx, cy, cz = tx.TransformPoint(float(clon),float(clat)); del cz # center point in projected (WRF) coordinates
-  #print ' (CX,CY,CZ) = ', cx, cy, cz 
+  cx, cy, _ = tx.TransformPoint(float(clat), float(clon))  # center point in projected (WRF) coordinates
+  # N.B.: apparently in GDAL 3.0 the order of arguments for TransformPoint changed...
   # infer size and geotransform
   def getXYlen(ds):
     ''' a short function to infer the length of horizontal axes from a dataset with unknown naming conventions ''' 
@@ -557,7 +557,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
 
 # return name and folder
 def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, subfolder=None, lexp=False, 
-                        exps=None, lreduce=False, mode=None, grid=None, resampling=None):
+                        exps=None, lreduce=False, mode='avg', grid=None, resampling=None):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   if name is None and experiment is None: raise ArgumentError
@@ -616,6 +616,8 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, s
       folder =  '{:s}/{:s}/'.format(folder,subfolder)
   elif mode.lower() == 'daily':
       folder = detectGridResampling(folder, grid=grid, resampling=resampling)
+  elif mode.lower() != 'avg':
+      raise ValueError(f"Invalid data mode '{mode}': only 'avg' and 'daily' allowed")
   # check types
   if not isinstance(domains,(tuple,list)): raise TypeError()
   if not all(isInt(domains)): raise TypeError()
@@ -1309,14 +1311,14 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_daily'
-  mode = 'test_xarray'  
+  # mode = 'test_xarray'  
 #   mode = 'test_climatology'
   # mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-#   mode = 'pickle_grid' 
+  mode = 'pickle_grid' 
   pntset = 'wcshp'
 #   pntset = 'glbshp'
 #   pntset = 'ecprecip'

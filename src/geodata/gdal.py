@@ -171,8 +171,8 @@ class GridDefinition(object):
       xs = int(size[0]*(0.5-frac/2.)); ys = int(size[1]*(0.5-frac/2.))
       xe = int(size[0]*(0.5+frac/2.)); ye = int(size[1]*((0.5+frac/2.)))
       xe = max(xs+1,xe); ye = max(ys+1,ye); 
-      (llx,lly,llz) = tx.TransformPoint(xlon.coord[xs].astype(np.float64),ylat.coord[ys].astype(np.float64)); del llz
-      (urx,ury,urz) = tx.TransformPoint(xlon.coord[xe].astype(np.float64),ylat.coord[ye].astype(np.float64)); del urz
+      llx,lly,_ = tx.TransformPoint(ylat.coord[ys].astype(np.float64),xlon.coord[xs].astype(np.float64))  # order of arguments changed in GDAL 3
+      urx,ury,_ = tx.TransformPoint(ylat.coord[ye].astype(np.float64),xlon.coord[xe].astype(np.float64))  # order of arguments changed in GDAL 3
       # N.B.: for some reason GDAL is very sensitive to type and does not understand numpy types
       dlon = ( urx - llx ) / ( xe - xs ); dlat = ( ury - lly ) / ( ye - ys )       
       self.scale = ( dlon + dlat ) / 2
@@ -182,12 +182,10 @@ class GridDefinition(object):
         xx = x2D.flatten().astype(np.float64); yy = y2D.flatten().astype(np.float64)
         lon2D = np.zeros_like(xx, dtype=np.float32); lat2D = np.zeros_like(yy, dtype=np.float32) 
         #for i in xrange(xx.size):
-        #  (lon2D[i],lat2D[i],tmp) = tx.TransformPoint(xx[i],yy[i])
+        #  (lon2D[i],lat2D[i],tmp) = tx.TransformPoint(yy[i], xx[i])
         # N.B.: apparently TransformPoints is not much faster than a simple loop... 
-        point_array = np.concatenate((x2D.reshape((x2D.size,1)),y2D.reshape((y2D.size,1))), axis=1)
-        #print point_array.shape; print point_array[:3,:]
+        point_array = np.concatenate((y2D.reshape((y2D.size,1)),x2D.reshape((x2D.size,1))), axis=1)  # order changed in GDAL 3
         point_array = np.asarray(tx.TransformPoints(point_array.astype(np.float64)), dtype=np.float32)
-        #print tmp.shape; print tmp[:3,:] # (lon2D,lat2D,zzz)
         lon2D[:] = point_array[:,0]; lat2D[:] = point_array[:,1] 
         lon2D = lon2D.reshape(x2D.shape); lat2D = lat2D.reshape(y2D.shape)
     else:
@@ -385,7 +383,7 @@ def getProjFromDict(projdict, name='', GeoCS='WGS84', convention='Proj4'):
       projstr = '+proj={0:s}'.format(proj); lproj = True 
     # loop over entries
     for key, value in projdict.items():
-      if key is not 'proj':
+      if key != 'proj':
         if not isinstance(key, str): raise TypeError
         if not isinstance(value, (float,np.inexact,int,np.integer)): raise TypeError
         # translate dict entries to string

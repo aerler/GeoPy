@@ -8,7 +8,8 @@ Modified statistical functions from scipy.stats
 
 import numpy as np
 # imports from scipy's internal stats-helper module
-from scipy.stats.stats import _chk_asarray, rankdata, distributions
+from scipy.stats.stats import rankdata, distributions
+from scipy.stats._stats_py import _chk_asarray
 from scipy.special import betainc
 
 # helper function

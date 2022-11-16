@@ -706,7 +706,7 @@ if __name__ == '__main__':
         # reproject source coordinates
         print("\n   reprojecting...")
 #         transform = CoordinateTransformation(rCSR,CSR)
-#         slat,slon,z = transform.TransformPoint(rlat.astype(np.float64),rlon.astype(np.float64))
+#         slat,slon,z = transform.TransformPoint(rlon.astype(np.float64),rlat.astype(np.float64)) # order changed in GDAL 3
         slon,slat = transform(pCSR, CSR, x, y, radians=False)
         print("\nReprojected coordinates (lat,lon):\n                  {:8.5f}, {:8.5f}".format(slat,slon))
         # compare against recorded coordinates

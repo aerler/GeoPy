@@ -415,10 +415,9 @@ class CentralProcessingUnit():
       tx = osr.CoordinateTransformation(latlon,srcgrd.projection)
       xs = []; ys = [] 
       for i in range(len(lons)):
-        x,y,z = tx.TransformPoint(lons[i].astype(np.float64),lats[i].astype(np.float64))
+        x,y,z = tx.TransformPoint(lats[i].astype(np.float64), lons[i].astype(np.float64))  # order of arguments changed in GDAL 3
         xs.append(x); ys.append(y); del z
       lons = np.array(xs); lats = np.array(ys)
-      #lons,lats = tx.TransformPoints(lons,lats) # doesn't seem to work...
     else:
       if lons.min() < 0. and xlon.coord.max() > 180.: lons = np.where(lons < 0., lons + 360., lons)
       elif lons.max() > 180. and xlon.coord.min() < 0.: lons = np.where(lons > 180., 360.-lons, lons)
