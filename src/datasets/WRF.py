@@ -686,14 +686,22 @@ def loadWRF_Shp(experiment=None, name=None, domains=None, shape=None, grid=None,
                      lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
-def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, filetypes=None, varlist=None, 
+def loadWRF(experiment=None, name=None, domains=None, domain=None, grid=None, period=None, filetypes=None, varlist=None, 
             varatts=None, lconst=True, lautoregrid=False, lctrT=True, lfixPET=True, lwrite=False, ltrimT=False, 
-            exps=None, bias_correction=None):
+            exps=None, bias_correction=None, lxarray=False, **xrargs):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
-  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
-                     period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                     lautoregrid=lautoregrid, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
-                     ltrimT=ltrimT, bias_correction=bias_correction)  
+  if lxarray:
+      domain = domain or domains
+      ds = loadWRF_XR(experiment=experiment, name=name, domain=domain, grid=grid, station=None, shape=None,
+                      filetypes=filetypes, bias_correction=bias_correction, varlist=varlist, varatts=varatts, 
+                      mode='clim', period=period, lconst=lconst, exps=exps, **xrargs)
+  else:
+      domains = domains or domain
+      ds = loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
+                       period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
+                       lautoregrid=lautoregrid, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
+                       ltrimT=ltrimT, bias_correction=bias_correction)
+  return ds
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, period=None, 
@@ -1132,11 +1140,11 @@ def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=
                       station=None, shape=None, period=None, mode='daily',  
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst,
                       bias_correction=bias_correction, chunks=chunks, multi_chunks=multi_chunks, resampling=resampling,
-                      lfilevaratts=lfilevaratts, folder=folder, subfolder=subfolder, **xrargs)  
+                      folder=folder, subfolder=subfolder, **xrargs)  
 
 # master function to load WRF xarray datasets
 def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None, shape=None, filetypes=None, bias_correction=None, 
-               varlist=None, varatts=None, lfilevaratts=False, mode='daily', period=None, lconst=False, lpickleGrid=True, 
+               varlist=None, varatts=None, mode='daily', period=None, lconst=False, lpickleGrid=True, 
                chunks=None, multi_chunks=None, folder=None, subfolder=None, resampling='bilinear',
                exps=None, enses=None, **xrargs):
     ''' Get a properly formatted xarray Dataset from post-processed WRF NetCDF4 files. '''
@@ -1149,22 +1157,30 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     # set modes    
     lclim = False; lts = False; ldaily = False # mode switches
     periodstr = ''
-    if mode.lower() == 'climatology': # post-processed climatology files
+    if mode.lower()[:4] == 'clim': # post-processed climatology files
         lclim = True
         # figure out period
+        if period is None and experiment.enddate is None:
+            period = 15  # default experiment length
         if isinstance(period,(tuple,list)):
           if not all(isNumber(period)): raise ValueError
         elif isinstance(period,str): period = [int(prd) for prd in period.split('-')]
-        elif isinstance(period,(int,np.integer)): 
+        elif isinstance(period, (int, np.integer)):
+            if experiment.begindate is None:
+                raise ArgumentError(f"experiment.begindate required for integer period")
             beginyear = int(experiment.begindate[0:4])
-            period = (beginyear, beginyear+period)
+            period = (beginyear, beginyear + period)
         elif period is None:
+            if experiment.begindate is None:
+                raise ArgumentError(f"experiment.begindate required instead of period")
+            if experiment.enddate is None:
+                raise ArgumentError(f"experiment.enddate required instead of period")
             period = (int(experiment.begindate[0:4]), int(experiment.enddate[0:4]))
-        else: 
-            raise DateError("Illegal period definition: {:s}".format(str(period))) 
+        else:
+            raise DateError("Illegal period definition: {:s}".format(str(period)))
         periodstr = '_{0:4d}-{1:4d}'.format(*period)
     elif mode.lower() in ('time-series','timeseries'): lts = True
-    elif mode.lower() in ('daily','hf'): 
+    elif mode.lower() in ('daily', 'hf'):
         ldaily = True
     else:
         raise ValueError(mode)
@@ -1239,9 +1255,9 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
                 if experiment is None: name = "'{:s}'".format(name)        
                 else: name = "'{:s}' ('{:s}')".format(experiment.name,experiment.grid) 
                 warn("Recomputing Grid Definition for Experiment {:s}".format(name))
-                # compute grid definition from wrfconst files (requires all parent domains) 
+                # compute grid definition from wrfconst files (requires all parent domains)
                 griddef = None; c = 0
-                filename = list(fileclasses.values())[c].tsfile # just use the first filetype
+                filename = list(fileclasses.values())[c].tsfile  # just use the first filetype
                 while griddef is None:
                   # some experiments do not have all files... try, until one works...
                   try:
@@ -1276,10 +1292,22 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     geoargs['ylat_coord'] = griddef.ylat.data_array if griddef else None
     ## use generic load function from xarray_tools
     # some default settings for xarray
-    xarray_kwargs = dict(decode_times=ldaily, mask_and_scale=True, combine_attrs='drop') # 'identical','no_conflict','override' and more...
+    xarray_kwargs = dict(decode_times=ldaily, mask_and_scale=True, combine_attrs='no_conflicts')
+    # combine_attrs: "drop", "identical", "no_conflicts", "drop_conflicts", "override"
+    #                note that "drop" will drop *all* attributes!
     xarray_kwargs.update(**xrargs)
     xds = loadXArray(varlist=varlist, folder=folder, varatts=atts, filelist=filelist, filetypes=filetypes, 
                      grid=grid, lgeoref=True, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **xarray_kwargs)
+    # add timedelta64 axis for climatologies
+    if lclim:
+        tax = xds.time
+        if tax.attrs['units'].lower().startswith('month'):
+            assert len(tax) == 12, tax
+            assert xds.time[0] == 1, tax
+            assert xds.time[11] == 12, tax
+            xds = xds.assign_coords({'time': tax.values.astype('timedelta64[M]')})
+        else:
+            raise NotImplementedError(f"Currently only monthly climatologies are implemented; found units '{tax.attrs['units']}'")
     # return dataset
     return xds
 
@@ -1312,13 +1340,13 @@ if __name__ == '__main__':
   
 #   mode = 'test_daily'
   # mode = 'test_xarray'  
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
   # mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-  mode = 'pickle_grid' 
+  # mode = 'pickle_grid' 
   pntset = 'wcshp'
 #   pntset = 'glbshp'
 #   pntset = 'ecprecip'
@@ -1397,8 +1425,9 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment='g-ctrl', domains=2, grid=None, filetypes=['hydro'], 
-                      period=(1979,1994), exps=WRF_exps)
+    lxarray = True
+    dataset = loadWRF(experiment='max-ctrl', domains=2, grid=None, filetypes=['hydro'],
+                      period=(1979,1994), exps=WRF_exps, lconst=not lxarray, lxarray=lxarray)
 #     dataset = loadWRF(experiment='max-ensemble', domains=None, filetypes=['plev3d'], period=(1979,1994),
 #                       varlist=['u','qhv','cqwu','cqw','RH'], lconst=True, exps=WRF_exps)
     print(dataset)
@@ -1406,8 +1435,10 @@ if __name__ == '__main__':
 #     print('')
 #     print(dataset.geotransform)
     print('')
-    print((dataset.zs))
-    var = dataset.zs.getArray()
+    varname = 'time'
+    print((dataset[varname]))
+    var = dataset[varname].values if lxarray else dataset[varname].getArray()
+    print(var)
     print((var.min(),var.mean(),var.std(),var.max()))
   
   # load monthly time-series file
