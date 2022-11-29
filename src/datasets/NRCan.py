@@ -27,15 +27,15 @@ root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder
 # NRCan grid definitions
 # make GridDefinition instances
 geotransform_NA12 = (-168.0, 1./12., 0.0, 25.0, 0.0, 1./12.); size_NA12 = (1392, 720) # (x,y) map size of NRCan grid
-NRCan_NA12_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_NA12, size=size_NA12)
+NRCan_NA12_grid = GridDefinition(name='NRCan_NA12', projection=None, geotransform=geotransform_NA12, size=size_NA12)
 geotransform_NA60 = (-168.0, 1./60., 0.0, 25.0, 0.0, 1./60.); size_NA60 = (6960, 3600) # (x,y) map size of NRCan grid
-NRCan_NA60_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_NA60, size=size_NA60)
+NRCan_NA60_grid = GridDefinition(name='NRCan_NA60', projection=None, geotransform=geotransform_NA60, size=size_NA60)
 geotransform_CA12 = (-141.0, 1./12., 0.0, 41.0, 0.0, 1./12.); size_CA12 = (1068, 510) # (x,y) map size of NRCan grid
-NRCan_CA12_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_CA12, size=size_CA12)
+NRCan_CA12_grid = GridDefinition(name='NRCan_CA12', projection=None, geotransform=geotransform_CA12, size=size_CA12)
 geotransform_CA24 = (-141.0, 1./24., 0.0, 41.0, 0.0, 1./24.); size_CA24 = (2136, 1008) # (x,y) map size of NRCan grid
-NRCan_CA24_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_CA24, size=size_CA24)
+NRCan_CA24_grid = GridDefinition(name='NRCan_CA24', projection=None, geotransform=geotransform_CA24, size=size_CA24)
 geotransform_SON60 = (-85.0, 1./60., 0.0, 41.0, 0.0, 1./60.); size_SON60 = (660, 360) # (x,y) map size of NRCan grid
-NRCan_SON60_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_SON60, size=size_SON60)
+NRCan_SON60_grid = GridDefinition(name='NRCan_SON60', projection=None, geotransform=geotransform_SON60, size=size_SON60)
 NRCan_grids = ['NA12','NA60','CA12','CA24','SON60']
 # default grid (NA12)
 NRCan_grid = NRCan_NA12_grid; geotransform = geotransform_NA12; size = size_NA12
