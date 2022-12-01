@@ -68,17 +68,16 @@ def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, 
     if mode.lower() not in ('avg','daily','6hourly','hourly'):
         raise ArgumentError(mode)
     # some default settings
-    if dataset is None and varname is not None: 
+    if dataset is None and varname is not None and mode == 'daily' and aggregation == 'daily':
         if dataset_index is None:
             raise ArgumentError("A 'dataset_index' dict is required to infer a preferred dataset for a variable.")
         dataset = dataset_index.get(varname,'MergedForcing')
     # dataset-specific settings
-    if dataset.lower() == 'mergedforcing' or dataset.lower() == 'merged': 
-        subset = 'merged'; dataset = 'MergedForcing'
+    if dataset.lower() == 'mergedforcing' or dataset.lower() == 'merged':
+        subset = 'merged';  dataset = 'MergedForcing'
         resolution = None
     elif dataset.lower() == 'nrcan':
-        if not resolution: resolution = 'CA12' # default
-        subset = dataset.lower() # no subsets
+        subset = dataset.lower()  # no subsets
     elif dataset[:4].lower() == 'era5' and len(dataset) > 4:
         if subset is None: subset = dataset.lower() 
         dataset = 'era5'
@@ -113,7 +112,16 @@ def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, 
         folder += ds_str_folder+'avg'
     else:
         folder += ds_str_folder + '_'+mode.lower()
-        folder = detectGridResampling(folder, grid=grid, resampling=resampling)
+        try:
+            folder = detectGridResampling(folder, grid=grid, resampling=resampling)
+        except FileNotFoundError as e:
+            if resolution is None:
+                # N.B.: if resolution was not specified and the grid subfolder in
+                # daily mode does not exist, then grid was passed instead of
+                # resolution
+                folder = detectGridResampling(folder, grid=None, resampling=None)
+            else:
+                raise e
     if folder[-1] != '/': folder += '/'
     if lcreateFolder: os.makedirs(folder, exist_ok=True)
     # return folder and filename
