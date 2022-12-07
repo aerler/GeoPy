@@ -1,7 +1,7 @@
 '''
 Created on Nov. 07, 2020
 
-A module to read ERA5 data; this includes converting GRIB files to NetCDF-4, 
+A module to read ERA5 data; this includes converting GRIB files to NetCDF-4,
 as well as functions to load the converted and aggregated data.
 
 @author: Andre R. Erler, GPL v3
@@ -59,13 +59,13 @@ default_varlists = {name:[atts['name'] for atts in varatts.values()] for name,va
 DSNT = namedtuple(typename='Dataset', field_names=['name','interval','resolution','title',])
 dataset_attributes = dict(ERA5L = DSNT(name='ERA5L',interval='1h', resolution=0.1, title='ERA5-Land',), # downscaled land reanalysis
                           ERA5S = DSNT(name='ERA5S',interval='1h', resolution=0.25, title='ERA5-Sfc',), # regular surface; not verified
-                          ERA5A = DSNT(name='ERA5A',interval='6h', resolution=0.25, title='ERA5-Atm',),) # regular 3D; not verified                          
+                          ERA5A = DSNT(name='ERA5A',interval='6h', resolution=0.25, title='ERA5-Atm',),) # regular 3D; not verified
 
 # settings for NetCDF-4 files
-avgfolder = root_folder + dataset_name.lower()+'avg/' 
+avgfolder = root_folder + dataset_name.lower()+'avg/'
 avgfile   = 'era5{0:s}_clim{1:s}.nc' # the filename needs to be extended: biascorrection, grid and period
 tsfile    = 'era5_{0:s}{1:s}{2:s}_monthly.nc' # extend with biascorrection, variable and grid type
-daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
+daily_folder    = root_folder + dataset_name.lower()+'_daily/'
 netcdf_filename = 'era5_{:s}_daily.nc' # extend with variable name
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,ERA5Land_size[0]/16,ERA5Land_size[1]/32))
@@ -73,25 +73,25 @@ netcdf_settings = dict(chunksizes=(8,ERA5Land_size[0]/16,ERA5Land_size[1]/32))
 
 ## functions to load NetCDF datasets (using xarray)
 
-def loadERA5_Daily(varname=None, varlist=None, dataset=None, subset=None, grid=None, resolution=None, shape=None, station=None, 
+def loadERA5_Daily(varname=None, varlist=None, dataset=None, subset=None, grid=None, resolution=None, shape=None, station=None,
                    resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None, lfliplat=False, aggregation='daily',
                    mode='daily', chunks=True, multi_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily ERA5 data from NetCDF-4 files using xarray and add some projection information '''
-    if not ( lxarray and lgeospatial ): 
+    if not ( lxarray and lgeospatial ):
         raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
     if dataset and subset:
         if dataset != subset:
             raise ValueError((dataset,subset))
-    elif dataset and not subset: 
+    elif dataset and not subset:
         subset = dataset
-    if resolution is None: 
+    if resolution is None:
         if grid and grid[:3] in ('son','snw',): resolution = 'SON60'
         else: resolution = 'NA10' # default
     if varatts is None:
         if grid is None and station is None and shape is None: varatts = varatts_list[subset] # original files
     default_varlist = default_varlists.get(dataset, None)
     xds = loadXRDataset(varname=varname, varlist=varlist, dataset='ERA5', subset=subset, grid=grid, resolution=resolution, shape=shape,
-                        station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap, mode=mode, 
+                        station=station, default_varlist=default_varlist, resampling=resampling, varatts=varatts, varmap=varmap, mode=mode,
                         aggregation=aggregation, lgeoref=lgeoref, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **kwargs)
     # flip latitude dimension
     if lfliplat and 'latitude' in xds.coords:
@@ -111,7 +111,7 @@ ts_file_pattern   = tsfile # filename pattern: variable name and grid
 clim_file_pattern = avgfile # filename pattern: grid and period
 data_folder       = avgfolder # folder for user data
 grid_def  = {'':ERA5Land_grid} # no special name, since there is only one...
-LTM_grids = [] # grids that have long-term mean data 
+LTM_grids = [] # grids that have long-term mean data
 TS_grids  = ['',] # grids that have time-series data
 grid_res  = {res:0.25 for res in TS_grids} # no special name, since there is only one...
 default_grid = ERA5Land_grid
@@ -121,9 +121,9 @@ loadDailyTimeSeries    = loadERA5_Daily # daily time-series data
 # monthly time-series data for batch processing
 def loadTimeSeries(lxarray=False, **kwargs): raise NotImplementedError(lxarray=lxarray, **kwargs)
 loadClimatology        = None # pre-processed, standardized climatology
-loadStationClimatology = None # climatologies without associated grid (e.g. stations) 
+loadStationClimatology = None # climatologies without associated grid (e.g. stations)
 loadStationTimeSeries  = None # time-series without associated grid (e.g. stations)
-loadShapeClimatology   = None # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeClimatology   = None # climatologies without associated grid (e.g. provinces or basins)
 loadShapeTimeSeries    = None # time-series without associated grid (e.g. provinces or basins)
 
 
@@ -131,7 +131,13 @@ loadShapeTimeSeries    = None # time-series without associated grid (e.g. provin
 if __name__ == '__main__':
 
   import time, gc, os
-  
+  import dask
+  from dask.diagnostics import ProgressBar
+
+  # Dask scheduler settings - threading can make debugging very difficult
+  dask.config.set(scheduler='threading')  # default scheduler - some parallelization
+  # dask.config.set(scheduler='synchronous')  # single-threaded for small workload and debugging
+
   #print('xarray version: '+xr.__version__+'\n')
   xr.set_options(keep_attrs=True)
 
@@ -157,39 +163,40 @@ if __name__ == '__main__':
   grid = None; resampling = None
 
   dataset = 'ERA5L'
-#   resolution = 'SON10'
+  # resolution = 'SON10'
   resolution = 'NA10'
   # resolution = 'AU10'
-  
+
   # variable list
 #   varlist = ['snow']
   varlist = ['snow','dswe','precip','pet_era5','liqwatflx']
-  
+
 #   period = (2010,2019)
 #   period = (1997,2018)
+  period = (1997,1998)
 #   period = (1980,2018)
 
-  # loop over modes 
+  # loop over modes
   for mode in modes:
-      
+
     if mode == 'load_Climatology':
-       
+
         pass
 #         lxarray = False
-#         ds = loadERA5(varlist=varlist, period=period, grid=grid, 
+#         ds = loadERA5(varlist=varlist, period=period, grid=grid,
 #                         lxarray=lxarray) # load regular GeoPy dataset
 #         print(ds)
 #         print('')
 #         varname = list(ds.variables.keys())[0]
 #         var = ds[varname]
 #         print(var)
-#   
+#
 #         if lxarray:
 #             print(('Size in Memory: {:6.1f} MB'.format(var.nbytes/1024./1024.)))
-  
-  
+
+
     elif mode == 'load_Point_Climatology':
-      
+
         pass
 #         # load point climatology
 #         print('')
@@ -200,10 +207,10 @@ if __name__ == '__main__':
 #         print('')
 #         print((dataset.time))
 #         print((dataset.time.coord))
-  
-    
+
+
     elif mode == 'load_Point_Timeseries':
-      
+
         pass
 #         # load point climatology
 #         print('')
@@ -213,18 +220,18 @@ if __name__ == '__main__':
 #         print('')
 #         print((dataset.time))
 #         print((dataset.time.coord))
-  
-    
+
+
     elif mode == 'monthly_normal':
-  
+
         pass
-  
+
     elif mode == 'load_TimeSeries':
-       
+
         pass
 #         lxarray = False
 #         varname = varlist[0]
-#         xds = loadERA5_TS(varlist=varlist,  
+#         xds = loadERA5_TS(varlist=varlist,
 #                             grid=grid, lxarray=lxarray, geoargs=geoargs) # 32 time chunks may be possible
 #         print(xds)
 #         print('')
@@ -232,17 +239,17 @@ if __name__ == '__main__':
 #         print(xv)
 #         if lxarray:
 #             print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
-        
-  
+
+
     elif mode == 'monthly_mean':
-  
+
         pass
-  
+
     elif mode == 'load_Daily':
-       
+
         varlist = ['snow','dswe']
-        xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=None, subset='ERA5L', grid=grid, 
-                             chunks=True, lgeoref=True)
+        xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=None, subset='ERA5L', grid=grid,
+                             chunks=True, lgeoref=True, join='override', combine_attrs='no_conflicts')
         print(xds)
 #         print('')
         xv = xds.data_vars['snow']
@@ -252,55 +259,58 @@ if __name__ == '__main__':
         print(xv)
         print(xv.mean())
         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
-  
-      
+
+
     elif mode == 'derived_variables':
-      
+
         start = time.time()
-            
+
         lexec = True
         lappend_master = False
         ts_name = 'time_stamp'
         dataset = 'ERA5L'
-        load_chunks = True
+        multi_chunks = 'regular'
+        load_chunks = bool(multi_chunks)
         # load variables
-#         derived_varlist = ['dswe',]; load_list = ['snow']
-        derived_varlist = ['liqwatflx',]; load_list = ['dswe', 'precip']
+        derived_varlist = ['dswe',]; load_list = ['snow']
+        # derived_varlist = ['liqwatflx',]; load_list = ['dswe', 'precip']
         varatts = varatts_list[dataset]
-        xds = loadERA5_Daily(varlist=load_list, subset=dataset, resolution=resolution, grid=grid, 
-                             chunks=load_chunks, lfliplat=False)
+        xds = loadERA5_Daily(varlist=load_list, subset=dataset, resolution=resolution,
+                             grid=grid, chunks=load_chunks, multi_chunks=multi_chunks,
+                             lfliplat=False)
         # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
         print(xds)
-        
+
         # optional slicing (time slicing completed below)
-        start_date = None; end_date = None # auto-detect available data
-#         start_date = '2011-01-01'; end_date = '2011-01-08'
-  
+        start_date = None; end_date = None  # auto-detect available data
+        # start_date = '2011-01-01'; end_date = '2012-01-01'
+
         # slice and load time coordinate
-        xds = xds.loc[{'time':slice(start_date,end_date),}]
+        xds = xds.loc[{'time': slice(start_date, end_date)}]
         if ts_name in xds:
             tsvar = xds[ts_name].load()
         else:
-            tax = xds.coords['time']  
+            tax = xds.coords['time']
             ts_data = [pd.to_datetime(dt).strftime('%Y-%m-%d_%H:%M:%S') for dt in tax.data]
-            tsvar = xr.DataArray(data=ts_data, coords=(tax,), name='time_stamp', attrs=varatts['time_stamp'])            
-        
+            tsvar = xr.DataArray(data=ts_data, coords=(tax,), name='time_stamp', attrs=varatts['time_stamp'])
+
         # loop over variables
         for varname in derived_varlist:
-        
+
             # target dataset
             lskip = False
-            folder,filename = getFolderFileName(varname=varname, dataset='ERA5', subset=dataset, resolution=resolution, grid=grid, 
-                                                resampling=resampling, mode='daily', lcreateFolder=True)
-            nc_filepath = '{}/{}'.format(folder,filename)
+            folder, filename = getFolderFileName(varname=varname, dataset='ERA5', subset=dataset, resolution=resolution, grid=grid,
+                                                 resampling=resampling, mode='daily', lcreateFolder=True)
+            nc_filepath = '{}/{}'.format(folder, filename)
             if lappend_master and osp.exists(nc_filepath):
                 ncds = nc.Dataset(nc_filepath, mode='a')
                 ncvar3 = ncds[varname]
                 ncts = ncds[ts_name]
-                nctc = ncds['time'] # time coordinate
+                nctc = ncds['time']  # time coordinate
                 # update start date for after present data
                 start_date = pd.to_datetime(ncts[-1]) + pd.to_timedelta(1,unit='D')
-                if end_date is None: end_date = tsvar.data[-1]
+                if end_date is None:
+                    end_date = tsvar.data[-1]
                 end_date = pd.to_datetime(end_date)
                 if start_date > end_date:
                     print(("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_date)))
@@ -310,56 +320,57 @@ if __name__ == '__main__':
                     lappend = True
                     # update slicing (should not do anything if sliced before)
                     print(("\n Appending data from {} to {}.\n".format(start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d"))))
-                    xds = xds.loc[{'time':slice(start_date,end_date),}]
-                    tsvar = tsvar.loc[{'time':slice(start_date,end_date),}]
-            else: 
+                    xds = xds.loc[{'time': slice(start_date, end_date),}]
+                    tsvar = tsvar.loc[{'time': slice(start_date, end_date),}]
+            else:
                 lappend = False
-                
+
             if not lskip:
-              
+
                 print('\n')
-                default_varatts = varatts[varname] # need to ensure netCDF compatibility
+                default_varatts = varatts[varname]  # need to ensure netCDF compatibility
                 ## define actual computation
                 if varname == 'liqwatflx':
-                    ref_var = xds['precip']; note = "masked/missing values have been replaced by zero"
-                    xvar = ref_var.fillna(0) - xds['dswe'].fillna(0) # fill missing values with zero
+                    ref_var = xds['precip']
+                    note = "masked/missing values have been replaced by zero"
+                    xvar = ref_var.fillna(0) - xds['dswe'].fillna(0)  # fill missing values with zero
                     # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
                     #       in snowmelt will mask/invalidate valid values in precip
                 elif varname == 'dswe':
-                    ref_var = xds['snow']; note = "Rate of Daily SWE Changes"
+                    ref_var = xds['snow']
+                    note = "Rate of Daily SWE Changes"
                     assert ref_var.attrs['units'] == 'kg/m^2', ref_var.attrs['units']
-                    #xvar = ref_var.differentiate('time', datetime_unit='s')
-                    xvar = ref_var.diff('time', n=1) / 86400 # per second
-                    # shift time axis
-                    time_axis = xvar.coords['time'].data - np.timedelta64(1,'D')
-                    xvar = xvar.assign_coords(time=time_axis).broadcast_like(ref_var)                    
-                    
-                    
+                    # xvar = ref_var.differentiate('time', datetime_unit='s')
+                    xvar = ref_var.diff('time', n=1, label='upper') / 86400  # per second
+                    # expand time axis
+                    xvar = xvar.broadcast_like(ref_var).fillna(0)
+
                 # define/copy metadata
                 xvar.attrs = ref_var.attrs.copy()
                 xvar = xvar.rename(varname)
-                for att in ('name','units','long_name',): # don't copy scale factors etc...
-                    if att in default_varatts: xvar.attrs[att] = default_varatts[att]
-                assert xvar.attrs['name'] == xvar.name, xvar.attrs 
+                for att in ('name', 'units', 'long_name',):  # don't copy scale factors etc...
+                    if att in default_varatts:
+                        xvar.attrs[att] = default_varatts[att]
+                assert xvar.attrs['name'] == xvar.name, xvar.attrs
                 for att in list(xvar.attrs.keys()):
-                    if att.startswith('old_') or att in ('original_name','standard_name'): 
-                        del xvar.attrs[att] # does not apply anymore  
+                    if att.startswith('old_') or att in ('original_name',  'standard_name'):
+                        del xvar.attrs[att]  # does not apply anymore
                 xvar.attrs['note'] = note
                 # set chunking for operation
                 chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
-                if chunks: 
+                if chunks:
                     if isinstance(chunks,dict):
-                        chunks = tuple(chunks[dim] for dim in xvar.dims)                        
+                        chunks = tuple(chunks[dim] for dim in xvar.dims)
                     xvar = xvar.chunk(chunks=chunks)
-                print('Chunks:',xvar.chunks)
-          
-                
+                # print('Chunks:', xvar.chunks)
+
+
           #       # visualize task graph
           #       viz_file = daily_folder+'dask_sum.svg'
           #       xvar3.data.visualize(filename=viz_file)
           #       print(viz_file)
-                
-                
+
+
                 ## now save data, according to destination/append mode
                 if lappend:
                     # append results to an existing file
@@ -370,7 +381,7 @@ if __name__ == '__main__':
                     tc = np.concatenate([[0],np.cumsum(tc[:-1], dtype=np.int)])
                     yc = np.concatenate([[0],np.cumsum(yc[:-1], dtype=np.int)])
                     xc = np.concatenate([[0],np.cumsum(xc[:-1], dtype=np.int)])
-          #           xvar3 = xvar3.chunk(chunks=(tc,xvar3.shape[1],xvar3.shape[2]))
+                    # xvar3 = xvar3.chunk(chunks=(tc,xvar3.shape[1],xvar3.shape[2]))
                     # function to save each block individually (not sure if this works in parallel)
                     dummy = np.zeros((1,1,1), dtype=np.int8)
                     def save_chunk(block, block_id=None):
@@ -379,45 +390,47 @@ if __name__ == '__main__':
                         xs = xc[block_id[2]]; xe = xs + block.shape[2]
                         #print(((ts,te),(ys,ye),(xs,xe)))
                         #print(block.shape)
-                        ncvar3[ts:te,ys:ye,xs:xe] = block
+                        ncvar3[ts:te, ys:ye, xs:xe] = block
                         return dummy
                     # append to NC variable
-                    xvar.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute() # drop_axis=(0,1,2), 
+                    xvar.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute() # drop_axis=(0,1,2),
                     # update time stamps and time axis
-                    nctc[offset:t_max] = np.arange(offset,t_max)
-                    for i in range(tsvar.shape[0]): ncts[i+offset] = tsvar.data[i] 
+                    nctc[offset:t_max] = np.arange(offset, t_max)
+                    for i in range(tsvar.shape[0]):
+                        ncts[i + offset] = tsvar.data[i]
                     ncds.sync()
                     print('\n')
                     print(ncds)
                     ncds.close()
-                    del xvar, ncds 
+                    del xvar, ncds
                 else:
                     # save results in new file
-                    nds = xr.Dataset({ts_name:tsvar, varname:xvar,}, attrs=xds.attrs.copy())
-                    nds.coords['time'].attrs.pop('units',None) # needs to be free for use by xarray
+                    nds = xr.Dataset({ts_name: tsvar, varname: xvar}, attrs=xds.attrs.copy())
+                    nds.coords['time'].attrs.pop('units', None)  # needs to be free for use by xarray
                     print('\n')
                     print(nds)
                     print(nc_filepath)
                     # write to NetCDF
-                    tmp_filepath = nc_filepath + '.tmp' # use temporary file during creation            
+                    tmp_filepath = nc_filepath + '.tmp'  # use temporary file during creation
                     var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype)
                     task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                                         encoding={varname:var_enc,}, compute=False)
+                                         encoding={varname: var_enc}, compute=False)
                     if lexec:
-                        task.compute()
+                        with ProgressBar():
+                            task.compute()
                     else:
                         print(var_enc)
                         print(task)
-                        task.visualize(filename=folder+'netcdf.svg')  # This file is never produced
+                        task.visualize(filename=folder + 'netcdf.svg')  # This file is never produced
                     del nds, xvar
                     # replace original file
-                    if os.path.exists(nc_filepath): os.remove(nc_filepath)
+                    if os.path.exists(nc_filepath):
+                        os.remove(nc_filepath)
                     os.rename(tmp_filepath, nc_filepath)
-                    
+
                 # clean up
                 gc.collect()
-            
+
         # print timing
-        end =  time.time()
+        end = time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
-      

@@ -369,12 +369,12 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']
 #   work_loads += ['print_grid']
-  # work_loads += ['compute_derived']
+  work_loads += ['compute_derived']
   # work_loads += ['load_Daily']
   # work_loads += ['monthly_mean']
   # work_loads += ['load_TimeSeries']
   # work_loads += ['monthly_normal']
-  work_loads += ['load_Climatology']
+  # work_loads += ['load_Climatology']
 
   # some settings
   process_dataset = 'MergedForcing'; resolution = None
@@ -382,10 +382,10 @@ if __name__ == '__main__':
   # resolution = 'NA12'
   # resolution = 'SON60'
 
-  # process_dataset = 'ERA5'; subset = 'ERA5L'
-  # dataset_args = dict(ERA5=dict(subset='ERA5L', lfliplat=True))
+  process_dataset = 'ERA5'; subset = 'ERA5L'
+  dataset_args = dict(ERA5=dict(subset='ERA5L', lfliplat=True))
   # # resolution = 'AU10'
-  # resolution = 'NA10'
+  resolution = 'NA10'
 
   grid = None; bias_correction = None; period = None
   
@@ -394,7 +394,7 @@ if __name__ == '__main__':
 #   grid = 'hd1' # small Quebec grid
 #   grid = 'son2'; bias_correction = 'rfbc' # high-res Southern Ontario
 #   grid = 'on1'
-  grid = 'na12'
+  # grid = 'na12'
   pntset = 'sonshp'
 
 
