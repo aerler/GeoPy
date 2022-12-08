@@ -24,7 +24,7 @@ from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
 from datasets.misc import getFolderFileName, addConstantFields, loadXRDataset
 # for georeferencing
-from geospatial.xarray_tools import addGeoReference, updateVariableAttrs, computeNormals, getCommonChunks, saveXArray
+from geospatial.xarray_tools import addGeoReference, loadXArray, computeNormals, getCommonChunks, saveXArray
 from geospatial.netcdf_tools import addTimeStamps
 
 ## Meta-vardata
@@ -161,12 +161,8 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
     if ldebug: print(xds)
     for ds in ds_list[::-1]: xds.attrs.update(ds.attrs) # we want MergedForcing to have precedence
     xds.attrs['name'] = 'MergedForcing'; xds.attrs['title'] = 'Merged Forcing Daily Timeseries'
-    for key,value in global_ds_atts_dict.items():
+    for key, value in global_ds_atts_dict.items():
         if value is not None: xds.attrs[key] = value
-    if 'history' in xds.attrs:
-        xds.attrs['history'] = '*suppressed*'
-        for attr in ('NCO', 'CDO', 'CDI', 'nco_openmp_thread_number'):
-            xds.attrs.pop(attr, None)
     ## add additional fields
     if ldebug: print("Adding Constants:", const_list, '\n',)
     xds = addConstantFields(xds, const_list=const_list, grid=kwargs.get('grid',None))
@@ -177,7 +173,7 @@ loadDailyTimeSeries = loadMergedForcing_Daily
 
 def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, dataset_name=None, varatts=None,
                           shape=None, station=None, mode=None, aggregation=None, period=None, lxarray=True,
-                          lgeoref=False, geoargs=None, ltoMonthly=None, ldt64=True, dataset_args=None, **kwargs):
+                          ltoMonthly=None, ldt64=True, dataset_args=None, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
     if isinstance(varlist, dict):
         raise NotImplementedError("Loading variables from multiple files or datasets is currently not implemented.")
@@ -194,10 +190,9 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, d
         dataset_args = dataset_args[dataset_name]
         for arg in arg_list:
             if arg in dataset_args: file_args[arg] = dataset_args[arg]
-    folder, filename = getFolderFileName(varname=None, dataset=dataset_name, mode=mode,
-                                         aggregation=aggregation, period=period, lcreateFolder=False,
-                                         shape=shape, station=station, dataset_index=default_dataset_index,
-                                         **file_args)
+    folder, filename = getFolderFileName(varname=None, dataset=dataset_name, mode=mode, period=period,
+                                         aggregation=aggregation, lcreateFolder=False, station=station,
+                                         shape=shape, dataset_index=default_dataset_index, **file_args)
     #print(folder,filename)
     # remove some common arguments that have no meaning
     if name is None: name = dataset_name
@@ -209,13 +204,11 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, d
         ## load as xarray dataset
         # set options
         if 'decode_times' not in kwargs: kwargs['decode_times'] = True
-        if 'decode_timedelta' not in kwargs: kwargs['decode_timedelta'] = True
-        # load  dataset
-        xds = xr.open_dataset(folder + filename, **kwargs)
-        # update varatts and prune
-        xds = updateVariableAttrs(xds, varatts=varatts, varmap=None, varlist=varlist)
-        # some attributes
-        xds.attrs['name'] = name
+        if 'decode_timedelta' not in kwargs: kwargs['decode_timedelta'] = True  # does not seem to work
+        # load dataset using master function
+        xds = loadXArray(varlist=varlist, folder=folder, varatts=varatts, geoargs=geoargs,
+                         filelist={'single': filename}, filetypes=['single'],  # mock 'type' for single file
+                         default_varlist=None, varname=None, grid=None, filename_pattern=None, **kwargs)
         # load time stamps (like coordinate variables)
         if 'time_stamp' in xds: xds['time_stamp'].load()
         # add timedelta64 axis for monthly date and climatologies
@@ -237,10 +230,6 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, d
                 td_coord = np.datetime64(name_strs[2], 'M') + td_coord
             xds = xds.assign_coords({'time': td_coord})
             assert np.issubdtype(xds.time.dtype, np.datetime64) or np.issubdtype(xds.time.dtype, np.timedelta64), xds.time.dtype
-        # add projection
-        if lgeoref:
-            if geoargs is None: geoargs = dict()
-            xds = addGeoReference(xds, **geoargs)
         dataset = xds
     else:
         ## load as GeoPy dataset
@@ -261,7 +250,7 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, d
                 date1979 = datetime.strptime('1979-01-01', '%Y-%m-%d')
                 r = relativedelta.relativedelta(startdate, date1979)
                 #print(r.years*12+r.months)
-                coord = r.years*12+r.months + np.arange(len(time))
+                coord = r.years*12 + r.months + np.arange(len(time))
                 atts = time.atts.copy()
                 atts['long_name'] = 'month since 1979-01'
                 atts['units'] = 'month'
@@ -372,9 +361,9 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Timeseries']
 #   work_loads += ['print_grid']
   # work_loads += ['compute_derived']
-  # work_loads += ['load_Daily']
+  work_loads += ['load_Daily']
   # work_loads += ['monthly_mean']
-  work_loads += ['load_TimeSeries']
+  # work_loads += ['load_TimeSeries']
   # work_loads += ['monthly_normal']
   # work_loads += ['load_Climatology']
 
@@ -437,7 +426,8 @@ if __name__ == '__main__':
         lxarray = True
 #         period = (2011,2018)
         # period = (1997,2018)
-        period = (1981, 2011)
+        # period = (1981, 2011)
+        # period = (1981, 2020)
         period = period or prdstr  # from monthly_normal
 
         process_dataset = 'MergedForcing'
@@ -467,9 +457,8 @@ if __name__ == '__main__':
         # optional slicing (time slicing completed below)
         # start_date = None; end_date = None; varlist = None
         # start_date = '2011-01'; end_date = '2012-12'; varlist = None
-#         start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
-#         start_date = '1985-01'; end_date = '2014-12'; varlist = None # date ranges are inclusive
         start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
+        # start_date = '1981-01'; end_date = '2020-12'; varlist = None # date ranges are inclusive
         # start_date = '1981-01'; end_date = None; varlist = None # date ranges are inclusive
         # start_date = '2003-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
 
@@ -492,7 +481,7 @@ if __name__ == '__main__':
         # load variables object (not data!)
         xds = loadMergedForcing_TS(varlist=varlist, grid=grid, dataset_name=process_dataset,
                                    resolution=resolution, mode='daily', dataset_args=dataset_args,
-                                   lxarray=True)  # need Dask!
+                                   multi_chunks='time', lxarray=True)  # need Dask!
         xds = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
         print(xds)
         chunks = getCommonChunks(xds, method='min') # used later
@@ -544,7 +533,7 @@ if __name__ == '__main__':
         lxarray = True
         varname = None
         xds = loadMergedForcing_TS(varlist=None, dataset_name=process_dataset, dataset_args=dataset_args, mode='daily',
-                                   resolution=resolution, grid=grid, lxarray=lxarray)
+                                   resolution=resolution, grid=grid, lxarray=lxarray, ldropAtts=False)
         print(xds)
         print('')
         if lxarray:
@@ -659,51 +648,26 @@ if __name__ == '__main__':
                             ERA5=dict(resolution='NA10', grid='na12', subset='ERA5L'),
                             SnoDAS=dict(bias_correction='rfbc'),
                             )
-        # dataset_index = dict(precip='NRCan', precip_adj='NRCan', Tmin='NRCan', Tmax='NRCan', T2='NRCan',
-        #                      pet_hog='NRCan', pet_har='NRCan', pet_haa='NRCan', pet_th='NRCan',
-        #                      snow='ERA5', dswe='ERA5',
-        #                      lat2D='const', lon2D='const', zs='const')
-
-#         chunks = dict(time=8, latitude=59, longitude=62)
-        # varlist = {'NRCan':['Tmin','Tmax'], 'const':['lat2D']}
-        # time_slice = ('2011-01-01', '2012-01-01')
         time_slice = None
         xds = loadMergedForcing_Daily(varlist=varlist, grid=None, dataset_args=dataset_args,
                                       resolution=None, bias_correction=None,
-                                      join='outer', fill_value=np.NaN, chunks=True,
+                                      join='outer', fill_value=np.NaN, chunks=False,
                                       time_slice=time_slice, multi_chunks=multi_chunks, lskip=True)
-        #xds.unify_chunks()
         print(xds)
         print('')
-        print(xds.attrs)
-        print('')
-        # check lat2D array for correct order
-        if 'lat2D' in xds.variables:
-            print('')
-            print(xds['lat2D'])
-            print('Lat2D[0,:]:')
-            print(xds['lat2D'].values[0,0:5])
-            print('Lat2D[:,0]:')
-            print(xds['lat2D'].values[0:5,0])
-            if 'is_projected' not in xds.attrs or xds.attrs['is_projected'] == 0: # projected coords deviate from this
-                assert np.diff(xds['lat2D'].values[0,:]).sum() == 0, xds['lat2D'].values[0,0:5]
-                assert np.diff(xds['lat2D'].values[:,0]).sum() > 0, xds['lat2D'].values[0:5,0]
-#         # check for zeros in temperature field... (Kelvin!)
-#         for varname in ('T2','Tmin','Tmax'):
-#             if varname in xds:
-#                 xvar = xds[varname]
-#                 zeros = xvar < 100
-#                 print(varname,zeros.data.sum())
-        print('')
-        for varname,xv in xds.variables.items():
-            if xv.ndim == 3: break
-        xv = xds[varname] # get DataArray instead of Variable object
-#         xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
-  #       xv = xv.loc['2011-01-01',:,:]
-        print(xv)
-        print(xv.encoding)
-        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
 
+        # for varname,xv in xds.variables.items():
+        #     if xv.ndim == 3: break
+        # xv = xds[varname] # get DataArray instead of Variable object
+        # print(xv)
+        # print(xv.encoding)
+        # print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+
+        tax = xds.time
+        print(tax)
+        J = 1 + ( tax.astype('datetime64[D]') - tax.astype('datetime64[Y]') ) / np.timedelta64(1,'D')
+        J1980 = J.sel(time=slice('1981-01-01', '1981-12-31')).data
+        print(f"Julian Day: {J1980}")
 
     elif mode == 'compute_derived':
 
