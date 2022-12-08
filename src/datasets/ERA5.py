@@ -141,24 +141,9 @@ if __name__ == '__main__':
   #print('xarray version: '+xr.__version__+'\n')
   xr.set_options(keep_attrs=True)
 
-# import dask
-#   from dask.distributed import Client, LocalCluster
-#   # force multiprocessing (4 cores)
-#   cluster = LocalCluster(n_workers=2, memory_limit='1GB')
-#   cluster = LocalCluster(n_workers=4, memory_limit='6GB')
-#   cluster = LocalCluster(n_workers=1)
-#   client = Client(cluster)
-
-
   modes = []
-#   modes += ['load_Point_Climatology']
-#   modes += ['load_Point_Timeseries']
-  modes += ['derived_variables'     ]
+  # modes += ['derived_variables'     ]
   # modes += ['load_Daily'            ]
-  # modes += ['monthly_mean'          ]
-#   modes += ['load_TimeSeries'       ]
-  # modes += ['monthly_normal'        ]
-#   modes += ['load_Climatology'      ]
 
   grid = None; resampling = None
 
@@ -173,83 +158,17 @@ if __name__ == '__main__':
 
 #   period = (2010,2019)
 #   period = (1997,2018)
-  period = (1997,1998)
-#   period = (1980,2018)
+  # period = (1997,1998)
+  period = (1981,2011)
 
   # loop over modes
   for mode in modes:
 
-    if mode == 'load_Climatology':
+    if mode == 'load_Daily':
 
-        pass
-#         lxarray = False
-#         ds = loadERA5(varlist=varlist, period=period, grid=grid,
-#                         lxarray=lxarray) # load regular GeoPy dataset
-#         print(ds)
-#         print('')
-#         varname = list(ds.variables.keys())[0]
-#         var = ds[varname]
-#         print(var)
-#
-#         if lxarray:
-#             print(('Size in Memory: {:6.1f} MB'.format(var.nbytes/1024./1024.)))
-
-
-    elif mode == 'load_Point_Climatology':
-
-        pass
-#         # load point climatology
-#         print('')
-#         if pntset in ('shpavg','glbshp'): dataset = loadERA5_Shp(shape=pntset, period=(2009,2018))
-#         elif pntset in ('oncat'): dataset = loadERA5_Shp(shape=pntset, grid=grid, period=(2011,2019))
-#         else: raise NotImplementedError(pntset)
-#         print(dataset)
-#         print('')
-#         print((dataset.time))
-#         print((dataset.time.coord))
-
-
-    elif mode == 'load_Point_Timeseries':
-
-        pass
-#         # load point climatology
-#         print('')
-#         if pntset in ('oncat'): dataset = loadERA5_ShpTS(shape=pntset, grid=grid, )
-#         else: raise NotImplementedError(pntset)
-#         print(dataset)
-#         print('')
-#         print((dataset.time))
-#         print((dataset.time.coord))
-
-
-    elif mode == 'monthly_normal':
-
-        pass
-
-    elif mode == 'load_TimeSeries':
-
-        pass
-#         lxarray = False
-#         varname = varlist[0]
-#         xds = loadERA5_TS(varlist=varlist,
-#                             grid=grid, lxarray=lxarray, geoargs=geoargs) # 32 time chunks may be possible
-#         print(xds)
-#         print('')
-#         xv = xds[varname]
-#         print(xv)
-#         if lxarray:
-#             print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
-
-
-    elif mode == 'monthly_mean':
-
-        pass
-
-    elif mode == 'load_Daily':
-
-        varlist = ['snow','dswe']
+        varlist = ['precip',]
         xds = loadERA5_Daily(varlist=varlist, resolution=resolution, dataset=None, subset='ERA5L', grid=grid,
-                             chunks=True, lgeoref=True, join='override', combine_attrs='no_conflicts')
+                             chunks=True, lgeoref=True, join='outer', combine_attrs='no_conflicts')
         print(xds)
 #         print('')
         xv = xds.data_vars['snow']
@@ -272,12 +191,12 @@ if __name__ == '__main__':
         multi_chunks = 'regular'
         load_chunks = bool(multi_chunks)
         # load variables
-        derived_varlist = ['dswe',]; load_list = ['snow']
-        # derived_varlist = ['liqwatflx',]; load_list = ['dswe', 'precip']
+        # derived_varlist = ['dswe',]; load_list = ['snow']
+        derived_varlist = ['liqwatflx',]; load_list = ['dswe', 'precip']
         varatts = varatts_list[dataset]
         xds = loadERA5_Daily(varlist=load_list, subset=dataset, resolution=resolution,
                              grid=grid, chunks=load_chunks, multi_chunks=multi_chunks,
-                             lfliplat=False)
+                             lfliplat=False, join='inner')
         # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
         print(xds)
 
@@ -333,7 +252,7 @@ if __name__ == '__main__':
                 if varname == 'liqwatflx':
                     ref_var = xds['precip']
                     note = "masked/missing values have been replaced by zero"
-                    xvar = ref_var.fillna(0) - xds['dswe'].fillna(0)  # fill missing values with zero
+                    xvar = (ref_var.fillna(0) - xds['dswe'].fillna(0)).clip(0, None)  # fill missing values with zero and clip negative values (unphysical)
                     # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
                     #       in snowmelt will mask/invalidate valid values in precip
                 elif varname == 'dswe':
@@ -342,8 +261,8 @@ if __name__ == '__main__':
                     assert ref_var.attrs['units'] == 'kg/m^2', ref_var.attrs['units']
                     # xvar = ref_var.differentiate('time', datetime_unit='s')
                     xvar = ref_var.diff('time', n=1, label='upper') / 86400  # per second
-                    # expand time axis
-                    xvar = xvar.broadcast_like(ref_var).fillna(0)
+                    # expand time axis - actually not necessary, since precip is also from an accumulated difference
+                    # xvar = xvar.broadcast_like(ref_var).fillna(0)
 
                 # define/copy metadata
                 xvar.attrs = ref_var.attrs.copy()

@@ -1145,18 +1145,21 @@ def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=
                   multi_chunks=None, folder=None, subfolder=None, resampling=None, exps=None, enses=None, **xrargs):
     ''' Get a properly formatted xarray Dataset a with high-freuqency time-series data. '''
     return loadWRF_XR(experiment=experiment, name=name, domain=domain, grid=grid, exps=exps, enses=enses, lpickleGrid=lpickleGrid,
-                      station=None, shape=None, period=None, mode='daily',  
+                      station=None, shape=None, period=None, mode='daily',
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst,
                       bias_correction=bias_correction, chunks=chunks, multi_chunks=multi_chunks, resampling=resampling,
-                      folder=folder, subfolder=subfolder, **xrargs)  
+                      folder=folder, subfolder=subfolder, **xrargs)
+
 
 # master function to load WRF xarray datasets
-def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None, shape=None, filetypes=None, bias_correction=None, 
-               varlist=None, varatts=None, mode='daily', period=None, lconst=False, lpickleGrid=True, 
-               chunks=None, multi_chunks=None, folder=None, subfolder=None, resampling='bilinear',
-               exps=None, enses=None, ldt64=True, **xrargs):
+def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None, shape=None, filetypes=None,
+               bias_correction=None, varlist=None, varatts=None, mode='daily', period=None, lconst=False,
+               lpickleGrid=True, chunks=None, multi_chunks=None, folder=None, subfolder=None,
+               resampling='bilinear', exps=None, enses=None, ldt64=True, **xrargs):
     ''' Get a properly formatted xarray Dataset from post-processed WRF NetCDF4 files. '''
     from geospatial.xarray_tools import loadXArray
+    if enses is not None:
+        raise NotImplementedError()
     # determine file and folder
     if experiment is None and name is not None: 
         experiment = name; name = None # allow 'name' to define an experiment
@@ -1307,8 +1310,8 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     xds = loadXArray(varlist=varlist, folder=folder, varatts=atts, filelist=filelist, filetypes=filetypes,
                      grid=grid, lgeoref=True, geoargs=geoargs, chunks=chunks, multi_chunks=multi_chunks, **xarray_kwargs)
     # add timedelta64 axis for monthly date and climatologies
-    if ldt64:
-        tax = xds.time
+    tax = xds.time
+    if ldt64 and not (np.issubdtype(tax.dtype, np.datetime64) or np.issubdtype(tax.dtype, np.timedelta64)):
         if tax.attrs['units'].lower().startswith('month'):
             td_coord = tax.values.astype('timedelta64[M]')
         else:

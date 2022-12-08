@@ -200,27 +200,27 @@ def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_corr
         xds.attrs['title'] = xds.attrs['name'] + title_str
     # return dataset
     return xds
-    
+
 
 ## abuse for testing
 if __name__ == '__main__':
-    
+
     # select mode
-#     mode = 'filefolder'
+    # mode = 'filefolder'
     mode = 'loadXR'
-    
+
     # run tests
-    
+
     if mode == 'loadXR':
-        
-        xds = loadXRDataset(varname=None, varlist=['precip','T2'], dataset='NRCan', grid='snw2', bias_correction=None, resolution='SON60', 
+
+        xds = loadXRDataset(varname=None, varlist=['precip', 'T2'], dataset='NRCan', grid='snw2', bias_correction=None, resolution='SON60', 
                             period=None, shape=None, station=None, mode='daily', subset=None, resampling=None, 
                             varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,  
                             lgeoref=True, geoargs=None, chunks=None, lautoChunk=False, lskip=False,)
         print(xds)
-    
+
     elif mode == 'filefolder':
-        
+
         # test with generic variable place holder
         folder,filename = getFolderFileName(varname='{VAR:s}', dataset='NRCan', subset=None, resolution=None, bias_correction=None, 
                                             grid='snw2', resampling=None, mode='daily', period=None, shape=None, station=None, 

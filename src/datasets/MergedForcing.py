@@ -84,31 +84,32 @@ default_varlist = [varname for varname in varlist if varname not in default_data
 ## functions to load NetCDF datasets (using xarray)
 
 
-def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_index=None, dataset_args=None, dataset_name=dataset_name,
-                            time_slice=None, compat='override', join='inner', fill_value=np.NaN, ldebug=False, **kwargs):
+def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_index=None, dataset_args=None,
+                            dataset_name=dataset_name, time_slice=None, compat='override', join='inner',
+                            fill_value=np.NaN, ldebug=False, **kwargs):
     ''' function to load and merge data from different high-resolution datasets (e.g. SnoDAS or NRCan) using xarray;
         typical dataset-agnostic arguments: grid=str, lgeoref=True, geoargs=dict, chunks=dict, lautoChunk=False,
         typical dataset-specific arguments: folder=str, resampling=str, resolution=str, bias_correction=str '''
-    global_ds_atts_keys = ('resolution','bias_correction','resampling')
+    global_ds_atts_keys = ('resolution', 'bias_correction', 'resampling')
     # figure out varlist
     if varname and varlist: raise ValueError(varname,varlist)
     elif varname:
-        varlist = [varname] # load a single variable
+        varlist = [varname]  # load a single variable
     elif varlist is None:
         if dataset is None: varlist = list(varatts.keys())
-        else: varlist = {dataset:None, 'const':None} # load default list for dataset
-    if dataset_args is None: dataset_args = dict() # avoid errors
+        else: varlist = {dataset:None, 'const':None}  # load default list for dataset
+    if dataset_args is None: dataset_args = dict()  # avoid errors
     # assemble dataset list and arguments
-    if isinstance(varlist,dict):
+    if isinstance(varlist, dict):
         dataset_varlists = varlist
-    elif isinstance(varlist,(list,tuple)):
+    elif isinstance(varlist, (list, tuple)):
         if dataset:
-            dataset_varlists = {dataset:varlist}
+            dataset_varlists = {dataset: varlist}
         else:
             if dataset_index is None: dataset_index = default_dataset_index.copy()
             dataset_varlists = dict()
             for varname in varlist:
-                ds_name = dataset_index.get(varname,dataset_name) # default is native (global variable)
+                ds_name = dataset_index.get(varname, dataset_name)  # default is native (global variable)
                 if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname]
                 else: dataset_varlists[ds_name].append(varname)
     else:
@@ -118,7 +119,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
     ds_list = []
     global_ds_atts_dict = dict()
     #print(dataset_name)
-    for dataset,varlist in dataset_varlists.items():
+    for dataset, varlist in dataset_varlists.items():
         if ldebug: print("Loading", dataset, '\n', varlist, '\n')
         # prepare kwargs
         ds_args = kwargs.copy();
@@ -126,23 +127,23 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
         if dataset.lower() == dataset_name.lower():
             # native MergedForcing
             ds_args.update(dataset=dataset)
-            argslist = ['grid', ] # specific arguments for merged dataset variables
+            argslist = ['grid', ]  # specific arguments for merged dataset variables
             if varlist is None: varlist = default_varlist
             loadFunction = loadXRDataset
         else:
             # daily data from other datasets
-            ds_mod = import_module('datasets.{0:s}'.format(dataset)) # import dataset module
+            ds_mod = import_module('datasets.{0:s}'.format(dataset))  # import dataset module
             loadFunction = ds_mod.loadDailyTimeSeries
-            argslist = inspect.getfullargspec(loadFunction); argslist = argslist.args # list of actual arguments
+            argslist = inspect.getfullargspec(loadFunction); argslist = argslist.args  # list of actual arguments
         # remove some args that don't apply
-        for key in global_ds_atts_keys: # list of dataset-specific arguments that have to be controlled
+        for key in global_ds_atts_keys:  # list of dataset-specific arguments that have to be controlled
             if key not in argslist and key in ds_args: del ds_args[key]
         # load time series and and apply some formatting to vars
         ds = loadFunction(varlist=varlist, compat=compat, join=join, fill_value=fill_value, **ds_args)
         if ldebug: print(ds)
         # add some dataset attributes to variables, since we will be merging datasets
         for var in ds.variables.values(): var.attrs['dataset_name'] = dataset_name
-        for key in global_ds_atts_keys: # list of dataset-specific arguments that have to be controlled
+        for key in global_ds_atts_keys:  # list of dataset-specific arguments that have to be controlled
             if key in ds.attrs: value = ds.attrs[key]
             elif key in ds_args: value = ds_args[key]
             else: value = None
@@ -151,8 +152,8 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
                 if key not in global_ds_atts_dict:
                     global_ds_atts_dict[key] = value
                 elif global_ds_atts_dict[key] != value:
-                    global_ds_atts_dict[key] = None # only keep if all equal
-        if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time
+                    global_ds_atts_dict[key] = None  # only keep if all equal
+        if time_slice: ds = ds.loc[{'time':slice(*time_slice),}]  # slice time
         ds_list.append(ds)
     # merge datasets and attributed
     if ldebug: print("Merging Datasets:", compat, join, '\n')
@@ -165,7 +166,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
     if 'history' in xds.attrs:
         xds.attrs['history'] = '*suppressed*'
         for attr in ('NCO', 'CDO', 'CDI', 'nco_openmp_thread_number'):
-            xds.attrs.pop(attr)
+            xds.attrs.pop(attr, None)
     ## add additional fields
     if ldebug: print("Adding Constants:", const_list, '\n',)
     xds = addConstantFields(xds, const_list=const_list, grid=kwargs.get('grid',None))
@@ -175,8 +176,8 @@ loadDailyTimeSeries = loadMergedForcing_Daily
 
 
 def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, dataset_name=None, varatts=None,
-                          shape=None, station=None, mode=None, aggregation=None, period=None, lxarray=True, lgeoref=False,
-                          geoargs=None, ltoMonthly=None, ldt64=True, dataset_args=None, **kwargs):
+                          shape=None, station=None, mode=None, aggregation=None, period=None, lxarray=True,
+                          lgeoref=False, geoargs=None, ltoMonthly=None, ldt64=True, dataset_args=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
     if isinstance(varlist, dict):
         raise NotImplementedError("Loading variables from multiple files or datasets is currently not implemented.")
@@ -195,7 +196,8 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, d
             if arg in dataset_args: file_args[arg] = dataset_args[arg]
     folder, filename = getFolderFileName(varname=None, dataset=dataset_name, mode=mode,
                                          aggregation=aggregation, period=period, lcreateFolder=False,
-                                         shape=shape, station=station, dataset_index=default_dataset_index, **file_args)
+                                         shape=shape, station=station, dataset_index=default_dataset_index,
+                                         **file_args)
     #print(folder,filename)
     # remove some common arguments that have no meaning
     if name is None: name = dataset_name
@@ -209,7 +211,7 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, d
         if 'decode_times' not in kwargs: kwargs['decode_times'] = True
         if 'decode_timedelta' not in kwargs: kwargs['decode_timedelta'] = True
         # load  dataset
-        xds = xr.open_dataset(folder+filename, **kwargs)
+        xds = xr.open_dataset(folder + filename, **kwargs)
         # update varatts and prune
         xds = updateVariableAttrs(xds, varatts=varatts, varmap=None, varlist=varlist)
         # some attributes
@@ -217,8 +219,8 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset=None, d
         # load time stamps (like coordinate variables)
         if 'time_stamp' in xds: xds['time_stamp'].load()
         # add timedelta64 axis for monthly date and climatologies
-        if ldt64:
-            tax = xds.time
+        tax = xds.time
+        if ldt64 and not (np.issubdtype(tax.dtype, np.datetime64) or np.issubdtype(tax.dtype, np.timedelta64)):
             if tax.attrs['units'].lower().startswith('month'):
                 td_coord = tax.values.astype('timedelta64[M]')
             else:
@@ -369,10 +371,10 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']
 #   work_loads += ['print_grid']
-  work_loads += ['compute_derived']
+  # work_loads += ['compute_derived']
   # work_loads += ['load_Daily']
   # work_loads += ['monthly_mean']
-  # work_loads += ['load_TimeSeries']
+  work_loads += ['load_TimeSeries']
   # work_loads += ['monthly_normal']
   # work_loads += ['load_Climatology']
 
@@ -488,9 +490,10 @@ if __name__ == '__main__':
         start = time.time()
 
         # load variables object (not data!)
-        xds   = loadMergedForcing_TS(varlist=varlist, grid=grid, dataset_name=process_dataset, resolution=resolution, mode='daily',
-                                     dataset_args=dataset_args, lxarray=True) # need Dask!
-        xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
+        xds = loadMergedForcing_TS(varlist=varlist, grid=grid, dataset_name=process_dataset,
+                                   resolution=resolution, mode='daily', dataset_args=dataset_args,
+                                   lxarray=True)  # need Dask!
+        xds = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
         print(xds)
         chunks = getCommonChunks(xds, method='min') # used later
 
@@ -506,11 +509,13 @@ if __name__ == '__main__':
         encoding = dict()
         print('Original Chunks:', chunks)
         # save resampled dataset
-        nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid, period=prdstr, mode='daily',
-                                                   aggregation='clim', dataset_index=default_dataset_index, subset=subset)
+        nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid,
+                                                   period=prdstr, mode='daily', aggregation='clim', 
+                                                   dataset_index=default_dataset_index, subset=subset)
         # save to NetCDF file, with all bells and whistles
-        saveXArray(cds, filename=nc_filename, folder=nc_folder, mode='write', varlist=None, chunks=chunks, encoding=None,
-                   time_agg='month', laddTime=True, time_dim='time', ltmpfile=True, lcompute=True, lprogress=True, lfeedback=True)
+        saveXArray(cds, filename=nc_filename, folder=nc_folder, mode='write', varlist=None, chunks=chunks,
+                   encoding=None, time_agg='month', laddTime=True, time_dim='time', ltmpfile=True,
+                   lcompute=True, lprogress=True, lfeedback=True)
 
 #         for varname,cvar in cds.data_vars.items():
 #             cks = tuple(1 if dim == 'time' else chunks[dim] for dim in cvar.dims)
@@ -560,10 +565,10 @@ if __name__ == '__main__':
         varlist = None
         dataset_args = None;  filetype = None
 
-        # Merged Forcing
-        process_dataset = 'MergedForcing';  resolution = None; subset = None
-        varlist = {'MergedForcing': ['liqwatflx_ne5'], 'const': ['lat2D', 'lon2D']}
-        grid = 'na12'
+        # # Merged Forcing
+        # process_dataset = 'MergedForcing';  resolution = None; subset = None
+        # varlist = {'MergedForcing': ['liqwatflx_ne5'], 'const': ['lat2D', 'lon2D']}
+        # grid = 'na12'
 
         # # process just NRCan dataset
         # process_dataset = 'NRCan'
@@ -575,19 +580,19 @@ if __name__ == '__main__':
         # # grid = 'son2'; resolution = 'SON60'
         # # grid = 'snw2'; resolution = 'SON60'
 
-        # # just ERA5-land
-        # process_dataset = 'ERA5'; subset = 'ERA5L'
-        # varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
-        # dataset_args = dict(ERA5=dict(subset=subset, lfliplat=True, combine_attrs='override'))
-        # #resolution = 'NA10'; grid = 'son2'
-        # # resolution = 'NA10'; grid = 'snw2'
-        # resolution = 'NA10'; grid = None
-        # # resolution = 'AU10'; grid = 'qel1'
-        # #resolution = 'AU10'; grid = None
+        # just ERA5-land
+        process_dataset = 'ERA5'; subset = 'ERA5L'
+        varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
+        dataset_args = dict(ERA5=dict(subset=subset, lfliplat=True, combine_attrs='drop_conflicts'))
+        #resolution = 'NA10'; grid = 'son2'
+        # resolution = 'NA10'; grid = 'snw2'
+        resolution = 'NA10'; grid = None
+        # resolution = 'AU10'; grid = 'qel1'
+        #resolution = 'AU10'; grid = None
 
         # auto chunk, but use multiple of chunks for better workloads (~ 100 MB per chunk)
-        multi_chunks = {dim: 4 for dim in ('lat', 'lon', 'latitude', 'longitude', 'x', 'y')}
-        multi_chunks['time'] = 82 if grid == 'son2' else 92  # roughly 2 years... time chunk is 9 for son2
+        multi_chunks = {dim: 16 for dim in ('lat', 'lon', 'latitude', 'longitude', 'x', 'y')}
+        multi_chunks['time'] = 4  # roughly 1 month years...
 
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, join='outer', fill_value=np.NaN,
                                       bias_correction=bias_correction, resolution=resolution,
