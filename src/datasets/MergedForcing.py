@@ -361,22 +361,22 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Timeseries']
 #   work_loads += ['print_grid']
   # work_loads += ['compute_derived']
-  work_loads += ['load_Daily']
+  # work_loads += ['load_Daily']
   # work_loads += ['monthly_mean']
   # work_loads += ['load_TimeSeries']
-  # work_loads += ['monthly_normal']
-  # work_loads += ['load_Climatology']
+  work_loads += ['monthly_normal']
+  work_loads += ['load_Climatology']
 
   # some settings
   process_dataset = 'MergedForcing'; resolution = None
-  # process_dataset = 'NRCan'
-  # resolution = 'NA12'
+  process_dataset = 'NRCan'
+  resolution = 'NA12'
   # resolution = 'SON60'
 
-  process_dataset = 'ERA5'; subset = 'ERA5L'
-  dataset_args = dict(ERA5=dict(subset='ERA5L', lfliplat=True))
-  # # resolution = 'AU10'
-  resolution = 'NA10'
+  # process_dataset = 'ERA5'; subset = 'ERA5L'
+  # dataset_args = dict(ERA5=dict(subset='ERA5L', lfliplat=True))
+  # # # resolution = 'AU10'
+  # resolution = 'NA10'
 
   grid = None; bias_correction = None; period = None
   
@@ -427,14 +427,14 @@ if __name__ == '__main__':
 #         period = (2011,2018)
         # period = (1997,2018)
         # period = (1981, 2011)
-        # period = (1981, 2020)
+        period = (1981, 2020)
         period = period or prdstr  # from monthly_normal
 
-        process_dataset = 'MergedForcing'
-        # process_dataset = 'NRCan'  # can take grid instead of resolution
-        process_dataset = 'ERA5'
-        varlist = ['pet_hog', 'liqwatflx_ne5', 'liqwatflx', 'pet_era5']
-        # varlist = None
+        # process_dataset = 'MergedForcing'
+        process_dataset = 'NRCan'  # can take grid instead of resolution
+        # process_dataset = 'ERA5'
+        # varlist = ['pet_hog', 'liqwatflx_ne5', 'liqwatflx', 'pet_era5']
+        varlist = None
 
         grid_res = 'na12'
         dataset_args = dict(ERA5=dict(grid='na10', subset='ERA5L'))
@@ -457,12 +457,12 @@ if __name__ == '__main__':
         # optional slicing (time slicing completed below)
         # start_date = None; end_date = None; varlist = None
         # start_date = '2011-01'; end_date = '2012-12'; varlist = None
-        start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
-        # start_date = '1981-01'; end_date = '2020-12'; varlist = None # date ranges are inclusive
+        # start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
+        start_date = '1981-01'; end_date = '2020-12'; varlist = None # date ranges are inclusive
         # start_date = '1981-01'; end_date = None; varlist = None # date ranges are inclusive
         # start_date = '2003-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
 
-        # process_dataset = 'NRCan'; resolution = 'SON60'
+        process_dataset = 'NRCan'; resolution = 'NA12'
         # varlist = ['T2','time_stamp']
 
         # # just ERA5-land
@@ -809,7 +809,8 @@ if __name__ == '__main__':
                 from processing.newvars import computePotEvapHog
                 default_varatts = varatts[varname]; ref_var = dataset['Tmax']
                 note = 'PET based on the Hogg (1997) method using only Tmin and Tmax'
-                kwargs = dict(lmeans=False, lq2=False, zs=400, lxarray=True) # average elevation of Canada is 487 m
+                dataset.attrs['zs'] = 400  # average elevation of Canada is 487 m
+                kwargs = dict(lmeans=False, lq2=False, lxarray=True)
                 xvar = xr.map_blocks(computePotEvapHog, dataset, kwargs=kwargs)
             elif varname == 'pet_har' or varname == 'pet_haa':
                 from processing.newvars import computePotEvapHar
@@ -818,7 +819,7 @@ if __name__ == '__main__':
                     note = 'PET based on the Hargreaves method with Allen correction using only Tmin and Tmax'; lAllen = True
                 else:
                     note = 'PET based on the Hargreaves method using only Tmin and Tmax'; lAllen = False
-                kwargs = dict(lmeans=False, lat=None, lAllen=lAllen, l365=False, lxarray=True)
+                kwargs = dict(lmeans=False, lAllen=lAllen, l365=False, lxarray=True)
                 xvar = xr.map_blocks(computePotEvapHar, dataset, kwargs=kwargs)
             elif varname == 'pet_th':
                 default_varatts = varatts[varname]; ref_var = dataset['T2']
@@ -837,7 +838,7 @@ if __name__ == '__main__':
                     T2clim = T2clim.reindex_like(ref_var, method='nearest', copy=False) # slice out the CA12 grid
                 elif nrcan_res == 'SON60':
                     T2clim = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1997,2018), resolution='SON60',
-                                            grid=grid, lxarray=True, lgeoref=False, chunks=clim_chunks)['T2'].load().rename(time='month')
+                                               grid=grid, lxarray=True, lgeoref=False, chunks=clim_chunks)['T2'].load().rename(time='month')
                 else:
                     raise ValueError(f"No climatology available for this resolution/grid: '{nrcan_res}'")
                 print('Size of T2 climatology:',T2clim.nbytes/1024/1024,'MB')
@@ -845,7 +846,7 @@ if __name__ == '__main__':
                 # process timeseries
                 from processing.newvars import computePotEvapTh
                 note = 'PET based on the Thornthwaite method using only T2'
-                kwargs = dict(climT2='climT2', lat=None, l365=False, p='center', lxarray=True)
+                kwargs = dict(climT2='climT2', l365=False, p='center', lxarray=True)
                 xvar = xr.map_blocks(computePotEvapTh, dataset, kwargs=kwargs)
                 print(xvar)
             elif varname == 'liqwatflx_sno': # SnoDAS

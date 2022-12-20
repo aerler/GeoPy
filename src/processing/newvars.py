@@ -261,16 +261,16 @@ def _getTemperatures(dataset, lmeans=False, lskinT=True, lxarray=False):
   
 
 # compute potential evapo-transpiration with all bells and whistles
-def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem=True, lnetlw=False, 
-                     lgrdflx=True, lpmsl=True, lxarray=False, **kwargs):
+def computePotEvapPM(dataset, lterms=False, lmeans=False, lrad=True, lA=True, lem=True, lnetlw=False,
+                     lgrdflx=True, lpmsl=True, lxarray=False):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
   '''
   if lxarray: import xarray as xr
   # get net radiation at surface
-  if 'netrad' in dataset: Rn = dataset['netrad'].data if lxarray else dataset['netrad'][:] # net radiation
-  elif 'Rn' in dataset: Rn = dataset['Rn'].data if lxarray else dataset['Rn'][:] # alias
+  if 'netrad' in dataset: Rn = dataset['netrad'].data if lxarray else dataset['netrad'][:]  # net radiation
+  elif 'Rn' in dataset: Rn = dataset['Rn'].data if lxarray else dataset['Rn'][:]  # alias
   else: Rn = computeNetRadiation(dataset, lrad=lrad, lA=lA, lem=lem, lnetlw=lnetlw, asVar=False, lxarray=lxarray) # try to compute
   # heat flux in and out of the ground
   if lgrdflx:
@@ -345,8 +345,8 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem
 
 
 # compute potential evapo-transpiration; this method requires radiative flux data and mean temperature
-def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lA=True, lem=True, lnetlw=False, 
-                     lgrdflx=True, lpmsl=True, lxarray=False, **kwargs):
+def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lA=True, lem=True, lnetlw=False,
+                     lgrdflx=True, lpmsl=True, lxarray=False):
   ''' function to compute potential evapotranspiration based on the Priestley-Taylor method (1972):
       Priestley & Taylor (1972, MWR): On the Assessment of Surface Heat Flux and Evaporation Using Large-Scale Parameters
       Note that different values for 'alpha' may be appropriate for different climates.
@@ -456,13 +456,13 @@ def _inferElev(dataset, zs=None, name_list=None, latts=True, lunits=False, lxarr
 
 
 # compute potential evapo-transpiration based on Tmin/Tmax only (and elevation)
-def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, lxarray=False, **kwargs):
+def computePotEvapHog(dataset, lmeans=False, lq2=False, lxarray=False):
   ''' function to compute potential evapotranspiration based on Hogg's simplified formula (1997):
       Hogg (1997, AgForMet): Temporal scaling of moisture and the forest-grassland boundary in western Canada
   '''
   if lxarray: import xarray as xr
   # get surface elevation variables
-  zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True, lxarray=lxarray) 
+  zs, zs_units = _inferElev(dataset, latts=True, lunits=True, lxarray=lxarray) 
   assert zs_units is None or zs_units == 'm', zs
   T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans, lxarray=lxarray)
   # make sure T is in Celsius
@@ -636,7 +636,7 @@ def computeToAradiation(dataset, lat=None, l365=False, time_offset=0, lxarray=Fa
     # compute top-of-atmosphere solar radiation
     Ra = toa_rad(time, lat=lat, lmonth=lmonth, ldeg=True, l365=l365, time_offset=time_offset)    
     return Ra
-  
+
 # function to estimate clear-sky radiation at the surface from ToA radiation and elevation
 def clearsky_rad(Ra, zs):
     ''' clear-sky surface solar radiation, based on elevation [m] and ToA solar radiation [W/m^2] '''
@@ -655,7 +655,7 @@ def computeClearskyRadiation(dataset, zs=None, lat=None, l365=False, time_offset
 
 
 # compute potential evapotranspiration based on Hargreaves method; requires only Tmin/Tmax and ToA radiation (i.e. latitude and date)
-def computePotEvapHar(dataset, lat=None, lmeans=False, l365=False, time_offset=0, lAllen=False, lxarray=False, **kwargs):
+def computePotEvapHar(dataset, lmeans=False, l365=False, time_offset=0, lAllen=False, lxarray=False):
     ''' function to compute potetnial evapotranspiration following the Hargreaves method;
         (Hargreaves & Allen, 2003, Eq. 8) '''
     if lxarray: import xarray as xr
@@ -670,7 +670,7 @@ def computePotEvapHar(dataset, lat=None, lmeans=False, l365=False, time_offset=0
     else:
         raise VariableError("Cannot infer temperature units from unit string",t_units)
     # infer latitude
-    lat = _inferLat(dataset, lat=lat, ldeg=True, lunits=False, lxarray=lxarray)
+    lat = _inferLat(dataset, ldeg=True, lunits=False, lxarray=lxarray)
     # compute top-of-atmosphere solar radiation
     if lxarray:
         time = dataset['time'].data; lmonth = False
@@ -718,7 +718,7 @@ def heatIndex(T2, lKelvin=True, lkeepDims=True):
     return I
 
 # compute potential evapo-transpiration following Thornthwaite method; only requires T2 (monthly/daily and climatological)
-def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p='center', lxarray=False, **kwargs):
+def computePotEvapTh(dataset, climT2=None, l365=None, time_offset=0, p='center', lxarray=False):
     ''' function to compute potential evapotranspiration according to Thornthwaite method
         (Thornthwaite, 1948, Appendix 1 or https://en.wikipedia.org/wiki/Potential_evaporation) '''
     if lxarray:
@@ -775,8 +775,8 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
     I = heatIndex(climt, lKelvin=lKelvin, lkeepDims=True)
     a = evaluate('6.75e-7*I**3 - 7.71e-5*I**2 + 1.792e-2*I + 0.49239')
     # infer latitude
-    lat = _inferLat(dataset, lat=lat, ldeg=True, latts=True, lunits=False, lxarray=lxarray)
-    # compute PET 
+    lat = _inferLat(dataset, ldeg=True, latts=True, lunits=False, lxarray=lxarray)
+    # compute PET
     np.clip(t, a_min=0, a_max=None, out=t)
     pet = evaluate('(16./30.) * ( 10. * t/I )**a') # in mm/day for 12 hours of daylight
     # compute daylight hours
