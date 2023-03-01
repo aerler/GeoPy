@@ -427,11 +427,12 @@ if __name__ == '__main__':
 #         period = (2011,2018)
         # period = (1997,2018)
         # period = (1981, 2011)
-        period = (1981, 2020)
+        # period = (1981, 2020)
+        # period = (2000, 2020)
         period = period or prdstr  # from monthly_normal
 
         # process_dataset = 'MergedForcing'
-        process_dataset = 'NRCan'  # can take grid instead of resolution
+        # process_dataset = 'NRCan'  # can take grid instead of resolution
         # process_dataset = 'ERA5'
         # varlist = ['pet_hog', 'liqwatflx_ne5', 'liqwatflx', 'pet_era5']
         varlist = None
@@ -458,11 +459,13 @@ if __name__ == '__main__':
         # start_date = None; end_date = None; varlist = None
         # start_date = '2011-01'; end_date = '2012-12'; varlist = None
         # start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
-        start_date = '1981-01'; end_date = '2020-12'; varlist = None # date ranges are inclusive
+        start_date = '2000-01'; end_date = '2019-12'; varlist = None # date ranges are inclusive
+        # start_date = '1981-01'; end_date = '2020-12'; varlist = None # date ranges are inclusive        
         # start_date = '1981-01'; end_date = None; varlist = None # date ranges are inclusive
         # start_date = '2003-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
 
-        process_dataset = 'NRCan'; resolution = 'NA12'
+        # process_dataset = 'NRCan'; resolution = 'NA12'
+        process_dataset = 'MergedForcing'; grid = 'na12'
         # varlist = ['T2','time_stamp']
 
         # # just ERA5-land

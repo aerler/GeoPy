@@ -303,7 +303,7 @@ def checkGeoReference(xds, geoargs=None, grid=None):
 
 def loadSnoDAS_Daily(varname=None, varlist=None, grid=None, bias_correction=None, shape=None, station=None, 
                      resampling=None, varatts=None, varmap=None, lgeoref=True, geoargs=None,  
-                     chunks=None, multi_chunks=False, time_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
+                     chunks=None, multi_chunks=None, time_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
@@ -547,20 +547,20 @@ if __name__ == '__main__':
 #   modes += ['load_Point_Timeseries']
 #   modes += ['fix_time'              ]
 #   modes += ['test_binary_reader'    ]
-#   modes += ['convert_binary'        ]
-#   modes += ['add_variables'         ]
-  modes += ['load_Daily'            ]
+  modes += ['convert_binary'        ]
+  modes += ['add_variables'         ]
+  # modes += ['load_Daily'            ]
 #   modes += ['monthly_mean'          ]
 #   modes += ['load_TimeSeries'       ]
 #   modes += ['monthly_normal'        ]
 #   modes += ['load_Climatology'      ]
 
   pntset = 'oncat'
-#   grid = None # native
+  grid = None # native
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
 #   grid = 'on1' # large Ontario domain
-  grid = 'son2' # smaller southern Ontario domain
+  # grid = 'son2' # smaller southern Ontario domain
 #   grid = 'hd1' # small Quebec domain
 #   grid = 'glb1_d01'
 
@@ -885,7 +885,7 @@ if __name__ == '__main__':
                 varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
                 folder = '{}/{}'.format(folder,grid)
             if bias_correction: varname = '{}_{}'.format(bias_correction,varname) # prepend bias correction method
-            nc_filepath = '{}/{}'.format(folder,netcdf_filename.format(varname))
+            nc_filepath = '{}/{}'.format(folder,netcdf_filename.format(VAR=varname))
             if lappend_master and osp.exists(nc_filepath):
                 ncds = nc.Dataset(nc_filepath, mode='a')
                 ncvar3 = ncds[var]
@@ -1038,7 +1038,10 @@ if __name__ == '__main__':
         lappend = True
   #       netcdf_settings = dict(chunksizes=(1,snodas_shape2d[0]/4,snodas_shape2d[1]/8))
         nc_time_chunk = netcdf_settings['chunksizes'][0]
-        start_date = '2009-12-14'; end_date = '2019-04-10'
+        start_date = '2009-12-14'; end_date = '2023-03-01'  # non-inclusive end date
+        # N.B.: also note that data is published with one day delay, so the valid date
+        #       is actually one day before the date in the filename!
+        #       So, the last day in the output file is two days before the 'end_date'.
   
         if not osp.isdir(daily_folder): os.mkdir(daily_folder)
   
@@ -1047,7 +1050,7 @@ if __name__ == '__main__':
         for varname in binary_varlist:
         
   
-            filename = netcdf_filename.format(varname.lower())
+            filename = netcdf_filename.format(VAR=varname.lower())
             filepath = daily_folder+filename
   
             # create or open NetCDF-4 file
