@@ -43,7 +43,9 @@ axes_varlist = axes_varatts.keys()
 # merged/mixed/derived variables
 varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
                liqwatflx_sno = dict(name='liqwatflx_sno', units='kg/m^2/s', long_name='LWF (SnoDAS)'),
+               liqwatflx_snons = dict(name='liqwatflx_snons', units='kg/m^2/s', long_name='LWF (SnoDAS/no subl.)'),
                liqwatflx_ne5 = dict(name='liqwatflx_ne5', units='kg/m^2/s', long_name='LWF (ERA5-Land)'),
+               dswe = dict(name='dswe', units='kg/m^2/s', long_name='Simple SWE Differences'),
                pet = dict(name='pet', units='kg/m^2/s', long_name='Potential Evapotranspiration'),
                pet_pt  = dict(name='pet_pt',  units='kg/m^2/s', long_name='PET (Priestley-Taylor)'),
                pet_pts = dict(name='pet_pts', units='kg/m^2/s', long_name='PET (Priestley-Taylor, approx. LW)'),
@@ -85,11 +87,13 @@ default_varlist = [varname for varname in varlist if varname not in default_data
 
 
 def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_index=None, dataset_args=None,
-                            dataset_name=dataset_name, time_slice=None, compat='override', join='inner',
-                            fill_value=np.NaN, ldebug=False, **kwargs):
+                            dataset_name=None, time_slice=None, compat='override', join='inner',
+                            fill_value=np.NaN, ldebug=False, ldt64=True, **kwargs):
     ''' function to load and merge data from different high-resolution datasets (e.g. SnoDAS or NRCan) using xarray;
         typical dataset-agnostic arguments: grid=str, lgeoref=True, geoargs=dict, chunks=dict, lautoChunk=False,
         typical dataset-specific arguments: folder=str, resampling=str, resolution=str, bias_correction=str '''
+    if not ldt64:
+        raise NotImplementedError("Daily data are always loaded with a datetime64 axis")
     global_ds_atts_keys = ('resolution', 'bias_correction', 'resampling')
     # figure out varlist
     if varname and varlist: raise ValueError(varname,varlist)
@@ -109,7 +113,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
             if dataset_index is None: dataset_index = default_dataset_index.copy()
             dataset_varlists = dict()
             for varname in varlist:
-                ds_name = dataset_index.get(varname, dataset_name)  # default is native (global variable)
+                ds_name = dataset_index.get(varname, 'MergedForcing')  # default is native (global variable)
                 if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname]
                 else: dataset_varlists[ds_name].append(varname)
     else:
@@ -122,9 +126,9 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
     for dataset, varlist in dataset_varlists.items():
         if ldebug: print("Loading", dataset, '\n', varlist, '\n')
         # prepare kwargs
-        ds_args = kwargs.copy();
+        ds_args = kwargs.copy()
         if dataset in dataset_args: ds_args.update(dataset_args[dataset])
-        if dataset.lower() == dataset_name.lower():
+        if dataset.lower() == 'MergedForcing'.lower():
             # native MergedForcing
             ds_args.update(dataset=dataset)
             argslist = ['grid', ]  # specific arguments for merged dataset variables
@@ -142,7 +146,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
         ds = loadFunction(varlist=varlist, compat=compat, join=join, fill_value=fill_value, **ds_args)
         if ldebug: print(ds)
         # add some dataset attributes to variables, since we will be merging datasets
-        for var in ds.variables.values(): var.attrs['dataset_name'] = dataset_name
+        for var in ds.variables.values(): var.attrs['dataset_name'] = dataset
         for key in global_ds_atts_keys:  # list of dataset-specific arguments that have to be controlled
             if key in ds.attrs: value = ds.attrs[key]
             elif key in ds_args: value = ds_args[key]
@@ -155,17 +159,30 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
                     global_ds_atts_dict[key] = None  # only keep if all equal
         if time_slice: ds = ds.loc[{'time':slice(*time_slice),}]  # slice time
         ds_list.append(ds)
-    # merge datasets and attributed
-    if ldebug: print("Merging Datasets:", compat, join, '\n')
-    xds = xr.merge(ds_list, compat=compat, join=join, fill_value=fill_value)
-    if ldebug: print(xds)
-    for ds in ds_list[::-1]: xds.attrs.update(ds.attrs) # we want MergedForcing to have precedence
-    xds.attrs['name'] = 'MergedForcing'; xds.attrs['title'] = 'Merged Forcing Daily Timeseries'
-    for key, value in global_ds_atts_dict.items():
-        if value is not None: xds.attrs[key] = value
+    # merge datasets and attributes
+    if len(ds_list) == 1:
+        if ldebug: print("Returning single dataset:", dataset, '\n')
+        xds = ds_list[0]
+        if dataset_name is None: dataset_name = dataset
+    else:
+        if ldebug: print("Merging Datasets:", compat, join, '\n')
+        xds = xr.merge(ds_list, compat=compat, join=join, fill_value=fill_value)
+        if ldebug: print(xds)
+        for ds in ds_list[::-1]: xds.attrs.update(ds.attrs) # we want MergedForcing to have precedence
+        for key, value in global_ds_atts_dict.items():
+            if value is not None: xds.attrs[key] = value
+        if dataset_name is None: 
+            if len(dataset_varlists) == 1:
+                dataset_name = next(iter(dataset_varlists))  # get first/only key
+            else:
+                dataset_name = 'MergedForcing'
+    xds.attrs['name'] = dataset_name; xds.attrs['title'] = dataset_name + ' Daily Timeseries'
     ## add additional fields
-    if ldebug: print("Adding Constants:", const_list, '\n',)
-    xds = addConstantFields(xds, const_list=const_list, grid=kwargs.get('grid',None))
+    if len(const_list) > 0:
+        if ldebug: print("Adding Constants:", const_list, '\n',)
+        xds = addConstantFields(xds, const_list=const_list, grid=kwargs.get('grid',None))
+    else:
+        if ldebug: print("No Constants to add.\n")
     # return merged dataset
     return xds
 loadDailyTimeSeries = loadMergedForcing_Daily
@@ -331,6 +348,7 @@ if __name__ == '__main__':
   #gc.set_debug(gc.DEBUG_LEAK)
 
   import dask
+  from dask.diagnostics import ProgressBar
   dask.config.set(**{'array.slicing.split_large_chunks': False}) # suppress warnings about large chunks
   # dask.config.set(temporary_directory='G:/Data/TMP/')
 
@@ -360,12 +378,12 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']
 #   work_loads += ['print_grid']
-  # work_loads += ['compute_derived']
+  work_loads += ['compute_derived']
   # work_loads += ['load_Daily']
   # work_loads += ['monthly_mean']
   # work_loads += ['load_TimeSeries']
-  work_loads += ['monthly_normal']
-  work_loads += ['load_Climatology']
+  # work_loads += ['monthly_normal']
+  # work_loads += ['load_Climatology']
 
   # some settings
   process_dataset = 'MergedForcing'; resolution = None
@@ -685,45 +703,51 @@ if __name__ == '__main__':
         load_chunks = True # auto chunk output - this is necessary to maintain proper chunking!
         # load_chunks = dict(time=64, lat=480, lon=464)
         clim_stns = ['UTM','Elora']
-#         derived_varlist = ['dask_test']; load_list = ['T2']
-#         derived_varlist = ['pet_pt']; load_list = ['T2']
-#         derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
+        # derived_varlist = ['dask_test']; load_list = ['T2']
+        # derived_varlist = ['pet_pt']; load_list = ['T2']
+        # derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
         # derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
-#         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
-#         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
+        # derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
+        # derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
         # derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
         # derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
-#         derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
+        # derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
         # derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
-#         derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['snow']); bias_correction = 'rfbc'
-        derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip',], ERA5=['dswe'], )
-#         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
-#         bias_correction = 'rfbc'
-#         grid = 'son2'; resolution = 'CA12'
-#         grid = None; resolution = 'SON60'
-#         grid = 'son2'; resolution = 'SON60'; load_chunks = dict(time=8, x=59, y=59)
-#         grid = 'son2'
-#         grid = 'snw2'; load_chunks = dict(time=8, x=44, y=55)
+        # derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['snow']); bias_correction = 'rfbc'
+        derived_varlist = ['liqwatflx_snons']; load_list = dict(NRCan=['precip'], SnoDAS=['dswe']); bias_correction = None
+        # derived_varlist = ['dswe']; load_list = dict(SnoDAS=['snow',]); bias_correction = None
+        # derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip',], ERA5=['dswe'], )
+        # derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
+        # grid = 'son2'; resolution = 'CA12'
+        # grid = None; resolution = 'SON60'
+        # grid = 'son2'; resolution = 'SON60'; load_chunks = dict(time=8, x=59, y=59)
+        # grid = 'son2'
+        # grid = 'snw2'; load_chunks = dict(time=8, x=44, y=55)
         # grid = None; load_chunks = dict(time=8, lon=63, lat=64)
         # dataset_args = dict(NRCan=dict(resolution='CA12', grid=None,),
                             # ERA5=dict(resolution='NA10', grid='ca12', subset='ERA5L'), )
         # grid = None; resolution = 'NA12'
-        dataset_args = dict(NRCan=dict(resolution='NA12',),
-                            ERA5=dict(resolution='NA10', subset='ERA5L', grid='na12'), )
+        # dataset_args = dict(NRCan=dict(resolution='NA12',),
+        #                     ERA5=dict(resolution='NA10', subset='ERA5L', grid='na12'), )
+        # multi_chunks = 'small'
+        dataset_args = dict(NRCan=dict(resolution='NA12', grid='snodas'),
+                            SnoDAS=dict(grid=None, ), )
+        multi_chunks = dict(time=64)
 
         # if grid == 'son2' and load_chunks:
         #     load_chunks = {'time':72, 'y':59, 'x':59}
 
 
         # optional slicing (time slicing completed below)
-        # start_date = None; end_date = None # auto-detect available data
-#         start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
-#         start_date = '2011-01-01'; end_date = '2011-04-01'
-#         start_date = '2012-11-01'; end_date = '2013-01-31'
-#         start_date = '2011-12-01'; end_date = '2012-03-01'
-#         start_date = '2011-01-01'; end_date = '2012-12-31'
+        start_date = None; end_date = None # auto-detect available data
+        # start_date = '2009-12-14'; end_date = '2020-12-31' # apparently not inclusive...
+        # start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
+        # start_date = '2011-01-01'; end_date = '2011-04-01'
+        # start_date = '2012-11-01'; end_date = '2013-01-31'
+        # start_date = '2011-12-01'; end_date = '2012-03-01'
+        # start_date = '2011-01-01'; end_date = '2012-12-31'
         # start_date = '1997-01-01'; end_date = '2017-12-31' # inclusive
-        start_date = '1981-01-01'; end_date = '2020-08-31'  # currently available ERA5-Land data
+        # start_date = '1981-01-01'; end_date = '2020-08-31'  # currently available ERA5-Land data
         # start_date = '1981-01-01'; end_date = '2020-12-31' # apparently not inclusive...
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
 
@@ -731,8 +755,8 @@ if __name__ == '__main__':
         time_slice = (start_date, end_date) # slice time
         dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction=bias_correction,
                                           dataset_args=dataset_args, resampling=None, time_slice=time_slice, chunks=load_chunks,
-                                          multi_chunks='small', join='override', ldebug=False)
-#         dataset = dataset.unify_chunks()
+                                          multi_chunks=multi_chunks, join='override', ldebug=False)
+        # dataset = dataset.unify_chunks()
 
 
         # load time coordinate
@@ -852,19 +876,29 @@ if __name__ == '__main__':
                 kwargs = dict(climT2='climT2', l365=False, p='center', lxarray=True)
                 xvar = xr.map_blocks(computePotEvapTh, dataset, kwargs=kwargs)
                 print(xvar)
-            elif varname == 'liqwatflx_sno': # SnoDAS
+            elif varname == 'dswe': # simple 1st-order SWE differences
+                default_varatts = varatts[varname]
+                ref_var = dataset['snow']
+                swe = dataset['snow'].fillna(0)  # just pretend there is no snow...
+                assert swe.attrs['units'] == 'kg/m^2', swe.attrs['units']
+                xvar = swe.diff('time', n=1, label='upper') / 86400  # per second
+                swe_name = dataset.name
+                if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
+                note = 'simple SWE changes from ' + swe_name
+                xvar = xvar.clip(min=0, max=None) # remove negative values
+                tsvar = tsvar[1:]  # need to clip first day
+            elif varname == 'liqwatflx_snons': # SnoDAS without sublimation
                 default_varatts = varatts[varname]
                 ref_var = dataset['precip']
                 assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
-                swe = dataset['snow'].fillna(0) # just pretend there is no snow...
-                assert swe.attrs['units'] == 'kg/m^2', swe.attrs['units']
-                dswe = swe.differentiate('time', datetime_unit='s')
-                swe_name = 'SnoDAS'
+                dswe = dataset['dswe'].fillna(0)
+                assert dswe.attrs['units'] == 'kg/m^2/s', dswe.attrs['units']
+                swe_name = 'SnoDAS without sublimation'
                 if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
                 note = 'total precip (NRCan) - SWE changes from ' + swe_name
                 xvar = ref_var - dswe
-                xvar = xvar.clip(min=0,max=None) # remove negative values
-            elif varname == 'liqwatflx_ne5': # ER5-Land
+                xvar = xvar.clip(min=0, max=None) # remove negative values
+            elif varname == 'liqwatflx_ne5': # ERA5-Land
                 default_varatts = varatts[varname]
                 ref_var = dataset['precip']
                 assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
@@ -874,7 +908,7 @@ if __name__ == '__main__':
                 if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
                 note = 'total precip (NRCan) - SWE changes from ' + swe_name
                 xvar = ref_var - dswe
-                xvar = xvar.clip(min=0,max=None) # remove negative values
+                xvar = xvar.clip(min=0, max=None) # remove negative values
             else:
                 raise NotImplementedError(varname)
 
@@ -887,7 +921,7 @@ if __name__ == '__main__':
             if 'original_name' in xvar.attrs: del xvar.attrs['original_name'] # does not apply
             xvar.attrs['note'] = note
             # set chunking for operation
-            assert xvar.shape == ref_var.shape
+            assert xvar.shape == ref_var.shape or varname == 'dswe'
             chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
             # if chunks:
             #     xvar = xvar.chunk(chunks=chunks)
@@ -929,7 +963,10 @@ if __name__ == '__main__':
             task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                                  encoding={varname:var_enc}, compute=False)
             if lexec:
-                task.compute()
+                print(f"\nComputing variable '{varname}':")
+                with ProgressBar():
+                    task.compute(scheduler='threading', num_workers=4)
+                    # task.compute()
             else:
                 print(var_enc)
                 print(task)
