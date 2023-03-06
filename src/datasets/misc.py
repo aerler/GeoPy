@@ -88,6 +88,8 @@ def getFolderFileName(varname=None, dataset=None, subset=None, resolution=None, 
     # resolution
     if resolution: ds_str_file += '_' + resolution.lower()
     # construct filename
+    if grid and grid.lower() == dataset.lower():
+        grid = None
     gridstr = '_' + grid.lower() if grid else ''
     # add shape or station identifier in front of grid
     if shape and station:
@@ -182,6 +184,8 @@ def loadXRDataset(varname=None, varlist=None, dataset=None, grid=None, bias_corr
                   resampling=None, varmap=None, varatts=None, default_varlist=None, mask_and_scale=True,
                   lgeoref=True, geoargs=None, chunks=True, multi_chunks=None, lskip=False, **kwargs):
     ''' load data from standardized NetCDF files into an xarray Dataset '''
+    if grid and grid.lower() == dataset.lower():
+        grid = None
     # first, get folder and filename pattern
     folder, filename = getFolderFileName(varname='{var:s}', dataset=dataset, subset=subset, resolution=resolution, grid=grid,
                                          bias_correction=bias_correction, resampling=resampling, period=period, mode=mode,

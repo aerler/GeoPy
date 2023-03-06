@@ -126,7 +126,8 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
     for dataset, varlist in dataset_varlists.items():
         if ldebug: print("Loading", dataset, '\n', varlist, '\n')
         # prepare kwargs
-        ds_args = kwargs.copy()
+        ds_args = dict(compat=compat, join=join, fill_value=fill_value)
+        ds_args.update(kwargs)
         if dataset in dataset_args: ds_args.update(dataset_args[dataset])
         if dataset.lower() == 'MergedForcing'.lower():
             # native MergedForcing
@@ -143,7 +144,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_in
         for key in global_ds_atts_keys:  # list of dataset-specific arguments that have to be controlled
             if key not in argslist and key in ds_args: del ds_args[key]
         # load time series and and apply some formatting to vars
-        ds = loadFunction(varlist=varlist, compat=compat, join=join, fill_value=fill_value, **ds_args)
+        ds = loadFunction(varlist=varlist, **ds_args)
         if ldebug: print(ds)
         # add some dataset attributes to variables, since we will be merging datasets
         for var in ds.variables.values(): var.attrs['dataset_name'] = dataset
@@ -351,6 +352,11 @@ if __name__ == '__main__':
   from dask.diagnostics import ProgressBar
   dask.config.set(**{'array.slicing.split_large_chunks': False}) # suppress warnings about large chunks
   # dask.config.set(temporary_directory='G:/Data/TMP/')
+
+  from dask.distributed import Client, LocalCluster
+  cluster = LocalCluster(processes=True, threads_per_worker=1, n_workers=2, memory_limit=0.3)
+  client = Client(cluster)
+  print(client)
 
   # configure dask client
   # from dask.distributed import Client
@@ -700,7 +706,10 @@ if __name__ == '__main__':
         lexec = True
         # lexec = False
         resolution = None; bias_correction = None; dataset_args = dict(ERA5=dict(filetype='ERA5L'))
-        load_chunks = True # auto chunk output - this is necessary to maintain proper chunking!
+        # netcdf_chunks = None
+        # load_chunks = True # auto chunk output - this is necessary to maintain proper chunking!
+        netcdf_chunks = (1, 128, 128)
+        load_chunks = {'time': 8*4, 'lat': 256*4, 'lon': 256*4}
         # load_chunks = dict(time=64, lat=480, lon=464)
         clim_stns = ['UTM','Elora']
         # derived_varlist = ['dask_test']; load_list = ['T2']
@@ -713,9 +722,9 @@ if __name__ == '__main__':
         # derived_varlist = ['pet_hog','pet_har','pet_haa','pet_th']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations without radiation
         # derived_varlist = ['pet_pts','pet_pt']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # PET approximations with radiation
         # derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
-        # derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['snow']); bias_correction = 'rfbc'
-        derived_varlist = ['liqwatflx_snons']; load_list = dict(NRCan=['precip'], SnoDAS=['dswe']); bias_correction = None
-        # derived_varlist = ['dswe']; load_list = dict(SnoDAS=['snow',]); bias_correction = None
+        derived_varlist = ['liqwatflx_sno']; load_list = dict(NRCan=['precip'], SnoDAS=['dswe', 'evap_snow', 'evap_blow']); bias_correction = None  # 'rfbc'
+        # derived_varlist = ['liqwatflx_snons']; load_list = dict(NRCan=['precip'], SnoDAS=['dswe']); bias_correction = None  # 'rfbc'
+        # derived_varlist = ['dswe']; load_list = dict(SnoDAS=['snow']); bias_correction = None
         # derived_varlist = ['liqwatflx_ne5']; load_list = dict(NRCan=['precip',], ERA5=['dswe'], )
         # derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
         # grid = 'son2'; resolution = 'CA12'
@@ -731,16 +740,17 @@ if __name__ == '__main__':
         #                     ERA5=dict(resolution='NA10', subset='ERA5L', grid='na12'), )
         # multi_chunks = 'small'
         dataset_args = dict(NRCan=dict(resolution='NA12', grid='snodas'),
-                            SnoDAS=dict(grid=None, ), )
-        multi_chunks = dict(time=64)
-
+                            SnoDAS=dict(grid=None, ), join='inner')
+        # multi_chunks = dict(time=1, lat=8, lon=8)  # for SnoDAS, which has fairly large chunks
+        multi_chunks = None
+        
         # if grid == 'son2' and load_chunks:
         #     load_chunks = {'time':72, 'y':59, 'x':59}
 
 
         # optional slicing (time slicing completed below)
-        start_date = None; end_date = None # auto-detect available data
-        # start_date = '2009-12-14'; end_date = '2020-12-31' # apparently not inclusive...
+        # start_date = None; end_date = None # auto-detect available data
+        start_date = '2009-12-14'; end_date = '2020-12-31' # apparently not inclusive...
         # start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
         # start_date = '2011-01-01'; end_date = '2011-04-01'
         # start_date = '2012-11-01'; end_date = '2013-01-31'
@@ -876,7 +886,7 @@ if __name__ == '__main__':
                 kwargs = dict(climT2='climT2', l365=False, p='center', lxarray=True)
                 xvar = xr.map_blocks(computePotEvapTh, dataset, kwargs=kwargs)
                 print(xvar)
-            elif varname == 'dswe': # simple 1st-order SWE differences
+            elif varname == 'dswe':  # simple 1st-order SWE differences
                 default_varatts = varatts[varname]
                 ref_var = dataset['snow']
                 swe = dataset['snow'].fillna(0)  # just pretend there is no snow...
@@ -885,9 +895,23 @@ if __name__ == '__main__':
                 swe_name = dataset.name
                 if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
                 note = 'simple SWE changes from ' + swe_name
-                xvar = xvar.clip(min=0, max=None) # remove negative values
                 tsvar = tsvar[1:]  # need to clip first day
-            elif varname == 'liqwatflx_snons': # SnoDAS without sublimation
+            elif varname == 'liqwatflx_sno':  # SnoDAS with sublimation
+                default_varatts = varatts[varname]
+                ref_var = dataset['precip']
+                assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
+                dswe = dataset['dswe'].fillna(0)
+                assert dswe.attrs['units'] == 'kg/m^2/s', dswe.attrs['units']
+                evap_snow = dataset['evap_snow'].fillna(0)
+                assert evap_snow.attrs['units'] == 'kg/m^2/s', evap_snow.attrs['units']
+                evap_blow = dataset['evap_blow'].fillna(0)
+                assert evap_blow.attrs['units'] == 'kg/m^2/s', evap_blow.attrs['units']
+                swe_name = 'SnoDAS with sublimation'
+                if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
+                note = 'total precip (NRCan) - SWE changes from ' + swe_name
+                xvar = ref_var - dswe + evap_snow + evap_blow  # sublimation is negative in SnoDAS
+                xvar = xvar.clip(min=0, max=None)  # remove negative values
+            elif varname == 'liqwatflx_snons':  # SnoDAS without sublimation
                 default_varatts = varatts[varname]
                 ref_var = dataset['precip']
                 assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
@@ -897,8 +921,8 @@ if __name__ == '__main__':
                 if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
                 note = 'total precip (NRCan) - SWE changes from ' + swe_name
                 xvar = ref_var - dswe
-                xvar = xvar.clip(min=0, max=None) # remove negative values
-            elif varname == 'liqwatflx_ne5': # ERA5-Land
+                xvar = xvar.clip(min=0, max=None)  # remove negative values
+            elif varname == 'liqwatflx_ne5':  # ERA5-Land
                 default_varatts = varatts[varname]
                 ref_var = dataset['precip']
                 assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
@@ -908,7 +932,7 @@ if __name__ == '__main__':
                 if bias_correction: swe_name = swe_name + ' ' + bias_correction.upper()
                 note = 'total precip (NRCan) - SWE changes from ' + swe_name
                 xvar = ref_var - dswe
-                xvar = xvar.clip(min=0, max=None) # remove negative values
+                xvar = xvar.clip(min=0, max=None)  # remove negative values
             else:
                 raise NotImplementedError(varname)
 
@@ -922,7 +946,7 @@ if __name__ == '__main__':
             xvar.attrs['note'] = note
             # set chunking for operation
             assert xvar.shape == ref_var.shape or varname == 'dswe'
-            chunks = ref_var.encoding['chunksizes'] if load_chunks is True else load_chunks.copy()
+            chunks = netcdf_chunks if netcdf_chunks else ref_var.encoding['chunksizes']
             # if chunks:
             #     xvar = xvar.chunk(chunks=chunks)
             print('NetCDF Chunks:', chunks)
@@ -963,10 +987,10 @@ if __name__ == '__main__':
             task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                                  encoding={varname:var_enc}, compute=False)
             if lexec:
-                print(f"\nComputing variable '{varname}':")
-                with ProgressBar():
-                    task.compute(scheduler='threading', num_workers=4)
-                    # task.compute()
+                print(f"\nComputing variable '{varname}'...")
+                # with ProgressBar():
+                    # task.compute(scheduler='threads', num_workers=4)
+                task.compute()
             else:
                 print(var_enc)
                 print(task)

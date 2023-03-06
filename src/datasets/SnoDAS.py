@@ -100,7 +100,7 @@ tsfile    = 'snodas_{0:s}{1:s}{2:s}_monthly.nc' # extend with bias_correction, v
 daily_folder    = root_folder + dataset_name.lower()+'_daily/'
 netcdf_filename = dataset_name.lower()+'_{VAR:s}_daily.nc' # extend with variable name
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
-netcdf_settings = dict(chunksizes=(8,snodas_shape2d[0]/16,snodas_shape2d[1]/32))
+netcdf_settings = dict(chunksizes=(1, 128, 128))
 
 ## helper functions to handle binary files
 
@@ -628,10 +628,6 @@ if __name__ == '__main__':
     elif mode == 'monthly_normal':
 
 
-        # chunk sizes for monthly timeseries
-        if grid is None: chunks = (1,)+netcdf_settings['chunksizes'][1:]
-        else: chunks = None
-
         # optional slicing (time slicing completed below)
 #         start_date = None; end_date = None
 #         start_date = '2011-01'; end_date = '2011-12'
@@ -752,12 +748,6 @@ if __name__ == '__main__':
 
     elif mode == 'monthly_mean':
 
-
-        # chunk sizes for monthly timeseries
-        if grid is None:
-            chunks = (1,)+netcdf_settings['chunksizes'][1:]
-        else:
-            chunks = None
 
         # optional slicing (time slicing completed below)
 #         start_date = '2011-01-20'; end_date = '2011-02-11'
