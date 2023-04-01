@@ -342,39 +342,29 @@ loadShapeTimeSeries    = loadMergedForcing_ShpTS # time-series without associate
 if __name__ == '__main__':
 
   import time, os, gc
-#   from multiprocessing.pool import ThreadPool
-
-  print('xarray version: '+xr.__version__+'\n')
+  # print('xarray version: '+xr.__version__+'\n')
 
   #gc.set_debug(gc.DEBUG_LEAK)
 
+
+  ## Dask config
+  lcluster = True
+
   import dask
   from dask.diagnostics import ProgressBar
-  dask.config.set(**{'array.slicing.split_large_chunks': False}) # suppress warnings about large chunks
+  # dask.config.set(**{'array.slicing.split_large_chunks': False}) # suppress warnings about large chunks
   # dask.config.set(temporary_directory='G:/Data/TMP/')
 
-  from dask.distributed import Client, LocalCluster
-  cluster = LocalCluster(processes=True, threads_per_worker=1, n_workers=2, memory_limit=0.3)
-  client = Client(cluster)
-  print(client)
+  if lcluster:
+      from dask.distributed import Client, LocalCluster
+      # cluster = LocalCluster(processes=True, threads_per_worker=1, n_workers=2, memory_limit=0.3)  # for differencing
+      cluster = LocalCluster(processes=True, threads_per_worker=2, n_workers=4, memory_limit=0.2)  # for simple computations
+      client = Client(cluster)
+      print(client)
+      comp_args = None
+  else:
+      comp_args = dict(scheduler='threads', num_workers=4)
 
-  # configure dask client
-  # from dask.distributed import Client
-  # dask_client = Client(n_workers=2, threads_per_worker=2, memory_limit='1GB')
-  # dask_client = Client(n_workers=1, threads_per_worker=1,)
-  # print(dask_client)  # to show dashboard
-
-#   # turn caching off
-#   from dask.cache import Cache
-#   cache = Cache(0)
-#   cache.register()
-
-#   dask.config.set(scheduler='single-threaded')
-#   from dask.distributed import Client, LocalCluster
-#   # force multiprocessing (4 cores)
-#   cluster = LocalCluster(n_workers=1, dashboard_address='rz025:18787',
-#                          threads_per_worker=1, memory_limit='2GB')
-#   client = Client(cluster)
 
   ts_name = 'time_stamp'
   process_dataset = dataset_name # we can't overwrite dataset_name without causing errors...
@@ -384,11 +374,11 @@ if __name__ == '__main__':
 #   work_loads += ['load_Point_Climatology']
 #   work_loads += ['load_Point_Timeseries']
 #   work_loads += ['print_grid']
-  work_loads += ['compute_derived']
+  # work_loads += ['compute_derived']
   # work_loads += ['load_Daily']
   # work_loads += ['monthly_mean']
   # work_loads += ['load_TimeSeries']
-  # work_loads += ['monthly_normal']
+  work_loads += ['monthly_normal']
   # work_loads += ['load_Climatology']
 
   # some settings
@@ -447,6 +437,7 @@ if __name__ == '__main__':
 
     elif mode == 'load_Climatology':
 
+        mode = 'avg'
         lxarray = True
 #         period = (2011,2018)
         # period = (1997,2018)
@@ -468,7 +459,7 @@ if __name__ == '__main__':
 
         xds = loadMergedForcing(period=period, varlist=varlist, grid=grid_res,
                                 dataset_name=process_dataset, dataset_args=dataset_args,
-                                mode='daily', aggregation='clim', lxarray=lxarray)
+                                mode=mode, aggregation='clim', lxarray=lxarray)
         print(xds)
         print('')
         if lxarray:
@@ -479,18 +470,30 @@ if __name__ == '__main__':
 
     elif mode == 'monthly_normal':
 
+        mode = 'daily'
+        multi_chunks = 'regular'
         # optional slicing (time slicing completed below)
-        # start_date = None; end_date = None; varlist = None
+        start_date = None; end_date = None; varlist = None
+        start_date = '2010-01'; end_date = '2039-12'; varlist = None
         # start_date = '2011-01'; end_date = '2012-12'; varlist = None
         # start_date = '1981-01'; end_date = '2010-12'; varlist = None # date ranges are inclusive
-        start_date = '2000-01'; end_date = '2019-12'; varlist = None # date ranges are inclusive
+        # start_date = '2000-01'; end_date = '2019-12'; varlist = None # date ranges are inclusive
         # start_date = '1981-01'; end_date = '2020-12'; varlist = None # date ranges are inclusive        
         # start_date = '1981-01'; end_date = None; varlist = None # date ranges are inclusive
         # start_date = '2003-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
 
         # process_dataset = 'NRCan'; resolution = 'NA12'
-        process_dataset = 'MergedForcing'; grid = 'na12'
+        # process_dataset = 'MergedForcing'; grid = 'na12'
         # varlist = ['T2','time_stamp']
+        
+        # Tyler's high-res soil data
+        process_dataset = 'C1W_soil'
+        mode = 'avg'
+        resolution = 'geo005'
+        varlist = None
+        mode = 'avg'
+        multi_chunks = dict(time=1, lon=40, lat=20)
+
 
         # # just ERA5-land
         # process_dataset = 'ERA5'; subset = 'ERA5L'
@@ -504,11 +507,11 @@ if __name__ == '__main__':
 
         # start operation
         start = time.time()
-
+        
         # load variables object (not data!)
         xds = loadMergedForcing_TS(varlist=varlist, grid=grid, dataset_name=process_dataset,
-                                   resolution=resolution, mode='daily', dataset_args=dataset_args,
-                                   multi_chunks='time', lxarray=True)  # need Dask!
+                                   resolution=resolution, mode=mode, dataset_args=dataset_args,
+                                   multi_chunks=multi_chunks, lxarray=True)  # need Dask!
         xds = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
         print(xds)
         chunks = getCommonChunks(xds, method='min') # used later
@@ -526,12 +529,12 @@ if __name__ == '__main__':
         print('Original Chunks:', chunks)
         # save resampled dataset
         nc_folder, nc_filename = getFolderFileName(dataset=process_dataset, resolution=resolution, grid=grid,
-                                                   period=prdstr, mode='daily', aggregation='clim', 
+                                                   period=prdstr, mode=mode, aggregation='clim',
                                                    dataset_index=default_dataset_index, subset=subset)
-        # save to NetCDF file, with all bells and whistles
+        # save to NetCDF file, with all bells and whistles        
         saveXArray(cds, filename=nc_filename, folder=nc_folder, mode='write', varlist=None, chunks=chunks,
                    encoding=None, time_agg='month', laddTime=True, time_dim='time', ltmpfile=True,
-                   lcompute=True, lprogress=True, lfeedback=True)
+                   lcompute=True, lprogress=True, lfeedback=True, comp_args=comp_args)
 
 #         for varname,cvar in cds.data_vars.items():
 #             cks = tuple(1 if dim == 'time' else chunks[dim] for dim in cvar.dims)
@@ -556,10 +559,14 @@ if __name__ == '__main__':
 
 
     elif mode == 'load_TimeSeries':
+      
+        process_dataset = 'C1W_soil'
+        mode = 'avg'
+        resolution = 'geo005'
 
         lxarray = True
         varname = None
-        xds = loadMergedForcing_TS(varlist=None, dataset_name=process_dataset, dataset_args=dataset_args, mode='daily',
+        xds = loadMergedForcing_TS(varlist=None, dataset_name=process_dataset, dataset_args=dataset_args, mode=mode,
                                    resolution=resolution, grid=grid, lxarray=lxarray, ldropAtts=False)
         print(xds)
         print('')

@@ -131,15 +131,20 @@ loadShapeTimeSeries    = None # time-series without associated grid (e.g. provin
 if __name__ == '__main__':
 
   import time, gc, os
+
+  ## Dask config
+  lcluster = True
+
   import dask
   from dask.diagnostics import ProgressBar
+  # dask.config.set(**{'array.slicing.split_large_chunks': False}) # suppress warnings about large chunks
+  # dask.config.set(temporary_directory='G:/Data/TMP/')
 
-  # Dask scheduler settings - threading can make debugging very difficult
-  dask.config.set(scheduler='threading')  # default scheduler - some parallelization
-  # dask.config.set(scheduler='synchronous')  # single-threaded for small workload and debugging
-
-  #print('xarray version: '+xr.__version__+'\n')
-  xr.set_options(keep_attrs=True)
+  if lcluster:
+      from dask.distributed import Client, LocalCluster
+      cluster = LocalCluster(processes=True, threads_per_worker=1, n_workers=2, memory_limit=0.3)
+      client = Client(cluster)
+      print(client)
 
   modes = []
   # modes += ['derived_variables']
@@ -259,10 +264,8 @@ if __name__ == '__main__':
                     ref_var = xds['snow']
                     note = "Rate of Daily SWE Changes"
                     assert ref_var.attrs['units'] == 'kg/m^2', ref_var.attrs['units']
-                    # xvar = ref_var.differentiate('time', datetime_unit='s')
                     xvar = ref_var.diff('time', n=1, label='upper') / 86400  # per second
-                    # expand time axis - actually not necessary, since precip is also from an accumulated difference
-                    # xvar = xvar.broadcast_like(ref_var).fillna(0)
+                    # expanding time axis is actually not necessary, since precip is also from an accumulated difference
 
                 # define/copy metadata
                 xvar.attrs = ref_var.attrs.copy()
@@ -312,7 +315,7 @@ if __name__ == '__main__':
                         ncvar3[ts:te, ys:ye, xs:xe] = block
                         return dummy
                     # append to NC variable
-                    xvar.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute() # drop_axis=(0,1,2),
+                    tasks = xvar.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute()
                     # update time stamps and time axis
                     nctc[offset:t_max] = np.arange(offset, t_max)
                     for i in range(tsvar.shape[0]):
@@ -332,16 +335,22 @@ if __name__ == '__main__':
                     # write to NetCDF
                     tmp_filepath = nc_filepath + '.tmp'  # use temporary file during creation
                     var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype)
-                    task = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                                         encoding={varname: var_enc}, compute=False)
-                    if lexec:
-                        with ProgressBar():
-                            task.compute()
-                    else:
-                        print(var_enc)
-                        print(task)
-                        task.visualize(filename=folder + 'netcdf.svg')  # This file is never produced
+                    tasks = nds.to_netcdf(tmp_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                                          encoding={varname: var_enc}, compute=False)
                     del nds, xvar
+
+                if lexec:
+                    if lcluster:
+                        tasks.compute()
+                    else:
+                        with ProgressBar():
+                            tasks.compute()
+                else:
+                    print(var_enc)
+                    print(tasks)
+                    tasks.visualize(filename=folder + 'netcdf.svg')  # This file is never produced
+
+                if not lappend:
                     # replace original file
                     if os.path.exists(nc_filepath):
                         os.remove(nc_filepath)
