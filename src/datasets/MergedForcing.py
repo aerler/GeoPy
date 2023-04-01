@@ -378,8 +378,8 @@ if __name__ == '__main__':
   # work_loads += ['load_Daily']
   # work_loads += ['monthly_mean']
   # work_loads += ['load_TimeSeries']
-  work_loads += ['monthly_normal']
-  # work_loads += ['load_Climatology']
+  # work_loads += ['monthly_normal']
+  work_loads += ['load_Climatology']
 
   # some settings
   process_dataset = 'MergedForcing'; resolution = None
@@ -437,8 +437,17 @@ if __name__ == '__main__':
 
     elif mode == 'load_Climatology':
 
-        mode = 'avg'
+        mode = 'daily'
         lxarray = True
+        grid_res = None
+        geoargs = None
+
+        # Tyler's high-res soil data
+        process_dataset = 'C1W_soil'
+        geoargs = dict(proj4_string=None)
+        mode = 'avg'
+        period = (2010, 2040)
+
 #         period = (2011,2018)
         # period = (1997,2018)
         # period = (1981, 2011)
@@ -452,12 +461,13 @@ if __name__ == '__main__':
         # varlist = ['pet_hog', 'liqwatflx_ne5', 'liqwatflx', 'pet_era5']
         varlist = None
 
-        grid_res = 'na12'
-        dataset_args = dict(ERA5=dict(grid='na10', subset='ERA5L'))
+        # grid_res = 'na12'
+        dataset_args = dict(ERA5=dict(grid='na10', subset='ERA5L'),
+                            C1W_soil=dict(resolution='geo005',),)
         ## N.B.: actually 'NA10' is the 'resolution' for ERA5, but like with NRCan, too,
         #        we can substitute 'grid' for 'resolution', if no such grid exists
 
-        xds = loadMergedForcing(period=period, varlist=varlist, grid=grid_res,
+        xds = loadMergedForcing(period=period, varlist=varlist, grid=grid_res, geoargs=geoargs,
                                 dataset_name=process_dataset, dataset_args=dataset_args,
                                 mode=mode, aggregation='clim', lxarray=lxarray)
         print(xds)
@@ -471,7 +481,7 @@ if __name__ == '__main__':
     elif mode == 'monthly_normal':
 
         mode = 'daily'
-        multi_chunks = 'regular'
+        multi_chunks = 'horizontal'
         # optional slicing (time slicing completed below)
         start_date = None; end_date = None; varlist = None
         start_date = '2010-01'; end_date = '2039-12'; varlist = None
@@ -489,16 +499,12 @@ if __name__ == '__main__':
         # Tyler's high-res soil data
         process_dataset = 'C1W_soil'
         mode = 'avg'
-        resolution = 'geo005'
-        varlist = None
-        mode = 'avg'
-        multi_chunks = dict(time=1, lon=40, lat=20)
-
 
         # # just ERA5-land
         # process_dataset = 'ERA5'; subset = 'ERA5L'
         # #varlist = {'ERA5':['precip','liqwatflx','pet_era5','snow','dswe'], 'const':None}
-        # dataset_args = dict(ERA5=dict(subset=subset))
+        dataset_args = dict(ERA5=dict(subset=subset, resolution='NA10'),
+                            C1W_soil=dict(resolution='geo005'))
         # # resolution = 'AU10'; grid = 'qel1'
         # # resolution = 'AU10'; grid = None
         # # resolution = 'NA10'; grid = 'snw2'
@@ -509,8 +515,8 @@ if __name__ == '__main__':
         start = time.time()
         
         # load variables object (not data!)
-        xds = loadMergedForcing_TS(varlist=varlist, grid=grid, dataset_name=process_dataset,
-                                   resolution=resolution, mode=mode, dataset_args=dataset_args,
+        xds = loadMergedForcing_TS(varlist=varlist, dataset_name=process_dataset,
+                                   mode=mode, grid=grid, dataset_args=dataset_args,
                                    multi_chunks=multi_chunks, lxarray=True)  # need Dask!
         xds = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
         print(xds)
