@@ -41,3 +41,6 @@ figures/
 bin/
 test/
 gmon/.out
+
+.directory
+.vscode/sftp.json
