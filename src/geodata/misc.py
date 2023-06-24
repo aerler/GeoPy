@@ -81,42 +81,44 @@ def isFloat(arg): return isinstance(arg,(float,np.inexact))
 @ElementWise
 def isNumber(arg): return isinstance(arg,(int,np.integer,float,np.inexact))
 
-# define machine precision
-floateps = np.finfo(np.float).eps
 # check if an array is zero within machine precision
 def isZero(data, eps=None, masked_equal=True):
   ''' This function checks if a numpy array or scalar is zero within machine precision, and returns a scalar logical. '''
-  if isinstance(data,np.ndarray):
+  floateps = np.finfo(data.dtype).eps  # define machine precision
+  if isinstance(data, np.ndarray):
     if np.issubdtype(data.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(np.zeros_like(data), data, masked_equal=True)
 #     if eps is None: eps = 100.*floateps # default
 #       return np.all( np.absolute(array) <= eps )
     elif np.issubdtype(data.dtype, np.integer) or np.issubdtype(data.dtype, np.bool):
       return np.all( data == 0 )
-  elif isinstance(data,float) or isinstance(data, np.inexact):
-      if eps is None: eps = 100.*floateps # default
+  elif isinstance(data, float) or isinstance(data, np.inexact):
+      if eps is None: eps = 100. * floateps # default
       return np.absolute(data) <= eps
-  elif isinstance(data,(int,bool)) or isinstance(data, (np.integer,np.bool)):
+  elif isinstance(data, (int, bool)) or isinstance(data, (np.integer, np.bool)):
       return data == 0
   else: raise TypeError(data)
+
 # check if an array is one within machine precision
 def isOne(data, eps=None, masked_equal=True):
   ''' This function checks if a numpy array or scalar is one within machine precision, and returns a scalar logical. '''
-  if isinstance(data,np.ndarray):
+  floateps = np.finfo(data.dtype).eps  # define machine precision
+  if isinstance(data, np.ndarray):
     if np.issubdtype(data.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(np.ones_like(data), data, masked_equal=True)
     elif np.issubdtype(data.dtype, np.integer) or np.issubdtype(data.dtype, np.bool):
       return np.all( data == 1 )
-  elif isinstance(data,float) or isinstance(data, np.inexact):
-      if eps is None: eps = 100.*floateps # default
+  elif isinstance(data, float) or isinstance(data, np.inexact):
+      if eps is None: eps = 100. * floateps # default
       return np.absolute(data-1) <= eps
-  elif isinstance(data,(int,bool)) or isinstance(data, (np.integer,np.bool)):
+  elif isinstance(data, (int, bool)) or isinstance(data, (np.integer, np.bool)):
       return data == 1
   else: raise TypeError(data)
 
 # check if two arrays are equal within machine precision
 def isEqual(left, right, eps=None, masked_equal=True):
   ''' This function checks if two numpy arrays or scalars are equal within machine precision, and returns a scalar logical. '''
+  floateps = max(np.finfo(left.dtype).eps, np.finfo(right.dtype).eps)  # define machine precision
   diff_type = "Both arguments to function 'isEqual' must be of the same class!"
   if isinstance(left,np.ndarray):
     # ndarray
@@ -130,10 +132,10 @@ def isEqual(left, right, eps=None, masked_equal=True):
       return np.all( left == right ) # need to use numpy's all()
   elif isinstance(left,(float,np.inexact)):
     # numbers
-    if not isinstance(right,(float,np.inexact)): raise TypeError(diff_type)
-    if eps is None: eps = 100.*floateps # default
-    if ( isinstance(right,float) or isinstance(right,float) ) or left.dtype.itemsize == right.dtype.itemsize: 
-      return np.absolute(left-right) <= eps
+    if not isinstance(right,(float, np.inexact)): raise TypeError(diff_type)
+    if eps is None: eps = 100. * floateps # default
+    if ( isinstance(right, float) or isinstance(right, float) ) or left.dtype.itemsize == right.dtype.itemsize: 
+      return np.absolute(left - right) <= eps
     else:
       if left.dtype.itemsize < right.dtype.itemsize: right = left.dtype.type(right)
       else: left = right.dtype.type(left)
